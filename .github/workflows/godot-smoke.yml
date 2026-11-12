@@ -44,6 +44,12 @@ jobs:
           set -o pipefail
           godot --headless --path . --script res://tests/city_smoke.gd 2>&1 | tee godot-m2.log
           grep -q "M2_SMOKE_OK" godot-m2.log
+      - name: Testar navegação, exploração, combate e gravação M3
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . --script res://tests/military_smoke.gd 2>&1 | tee godot-m3.log
+          grep -q "M3_SMOKE_OK" godot-m3.log
       - name: Captura real com Godot e X virtual
         shell: bash
         run: |
@@ -61,6 +67,7 @@ jobs:
             godot-smoke.log
             godot-m1.log
             godot-m2.log
+            godot-m3.log
             godot-visual.log
             visual-m25.png
           if-no-files-found: ignore
