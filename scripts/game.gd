@@ -1,0 +1,410 @@
+extends Node3D
+## M1: núcleo pequeno, independente do gerador visual e da HUD.
+## Todos os modelos iniciais são construídos em 3D. Não depende de texturas externas.
+
+signal state_changed
+
+const PLAYER: int = 0
+const RIVAL: int = 1
+
+var world: Variant
+var turns: int = 1
+var units: Array[Dictionary] = []
+var cities: Array[Dictionary] = []
+var active_unit_id: int = -1
+var selected_city_id: int = -1
+var _id_counter: int = 1
+var _models: Node3D
+
+
+func _ready() -> void:
+    world = get_parent()
+    _models = Node3D.new()
+    _models.name = "ModelosDeJogo"
+    add_child(_models)
+    world.map_ready.connect(_new_session)
+    world.hex_selected.connect(_on_hex_selected)
+
+
+func _new_session() -> void:
+    units.clear()
+    cities.clear()
+    turns = 1
+    _id_counter = 1
+    selected_city_id = -1
+    var origin: Vector2i = _pick_start(Vector2i(15, 12), Vector2i(-1, -1))
+    var enemy: Vector2i = _pick_start(Vector2i(27, 17), origin)
+    _spawn_unit(PLAYER, "settler", origin)
+    var guard: Vector2i = _free_neighbor(origin)
+    _spawn_unit(PLAYER, "warrior", guard)
+    _spawn_unit(RIVAL, "settler", enemy)
+    active_unit_id = int(units[0]["id"])
+    world.rig.center_on(world.tiles[origin]["position"])
+    _draw_models()
+    state_changed.emit()
+
+
+func _pick_start(goal: Vector2i, avoid: Vector2i) -> Vector2i:
+    var best: float = INF
+    var answer: Vector2i = goal
+    for cell in world.tiles:
+        var data: Dictionary = world.tiles[cell]
+        if bool(data["water"]) or str(data["biome"]) == "mountain":
+            continue
+        var dist: float = (Vector2(cell) - Vector2(goal)).length_squared()
+        if avoid.x >= 0 and _hex_distance(cell, avoid) < 10:
+            dist += 1000.0
+        if dist < best:
+            best = dist
+            answer = cell
+    return answer
+
+
+func _free_neighbor(cell: Vector2i) -> Vector2i:
+    for candidate in _neighbors(cell):
+        if world.tiles.has(candidate) and not bool(world.tiles[candidate]["water"]):
+            return candidate
+    return cell
+
+
+func _neighbors(cell: Vector2i) -> Array[Vector2i]:
+    var odd: bool = (cell.y % 2) == 1
+    var delta: Array[Vector2i] = [
+        Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)
+    ]
+    if odd:
+        delta.append(Vector2i(1, -1))
+        delta.append(Vector2i(1, 1))
+    else:
+        delta.append(Vector2i(-1, -1))
+        delta.append(Vector2i(-1, 1))
+    var result: Array[Vector2i] = []
+    for offset in delta:
+        result.append(cell + offset)
+    return result
+
+
+func _hex_distance(a: Vector2i, b: Vector2i) -> int:
+    var ax: int = a.x - (a.y - (a.y & 1)) / 2
+    var bx: int = b.x - (b.y - (b.y & 1)) / 2
+    var dq: int = ax - bx
+    var dr: int = a.y - b.y
+    return int((absi(dq) + absi(dr) + absi(dq + dr)) / 2)
+
+
+func _spawn_unit(owner: int, kind: String, cell: Vector2i) -> void:
+    units.append({
+        "id": _id_counter,
+        "owner": owner,
+        "kind": kind,
+        "coords": cell,
+        "moved": false,
+        "health": 100
+    })
+    _id_counter += 1
+
+
+func player_unit_count() -> int:
+    var result: int = 0
+    for unit in units:
+        if int(unit["owner"]) == PLAYER:
+            result += 1
+    return result
+
+
+func unit_count() -> int:
+    return units.size()
+
+
+func city_count(owner: int = PLAYER) -> int:
+    var result: int = 0
+    for city in cities:
+        if int(city["owner"]) == owner:
+            result += 1
+    return result
+
+
+func get_active() -> Dictionary:
+    for unit in units:
+        if int(unit["id"]) == active_unit_id:
+            return unit
+    return {}
+
+
+func has_starting_units() -> bool:
+    var settler: bool = false
+    var warrior: bool = false
+    for unit in units:
+        if int(unit["owner"]) != PLAYER:
+            continue
+        if str(unit["kind"]) == "settler":
+            settler = true
+        elif str(unit["kind"]) == "warrior":
+            warrior = true
+    return settler and warrior
+
+
+func can_found() -> bool:
+    var unit: Dictionary = get_active()
+    if unit.is_empty() or str(unit["kind"]) != "settler" or int(unit["owner"]) != PLAYER:
+        return false
+    if city_count(PLAYER) >= 6:
+        return false
+    var cell: Vector2i = unit["coords"]
+    if bool(world.tiles[cell]["water"]):
+        return false
+    for city in cities:
+        if _hex_distance(cell, city["coords"]) < 4:
+            return false
+    return true
+
+
+func found_city() -> void:
+    if not can_found():
+        return
+    var unit: Dictionary = get_active()
+    var cell: Vector2i = unit["coords"]
+    cities.append({
+        "id": _id_counter, "owner": PLAYER,
+        "name": "Aurora" if city_count(PLAYER) == 0 else "Nova Aurora",
+        "coords": cell, "population": 1, "food": 0,
+        "production": 3, "project": "", "progress": 0
+    })
+    selected_city_id = _id_counter
+    _id_counter += 1
+    units.erase(unit)
+    active_unit_id = -1
+    _draw_models()
+    state_changed.emit()
+
+
+func next_player_unit() -> void:
+    var ids: Array[int] = []
+    for unit in units:
+        if int(unit["owner"]) == PLAYER:
+            ids.append(int(unit["id"]))
+    if ids.is_empty():
+        return
+    var idx: int = ids.find(active_unit_id)
+    active_unit_id = ids[(idx + 1) % ids.size()]
+    var target: Dictionary = get_active()
+    world.rig.center_on(world.tiles[target["coords"]]["position"])
+    _draw_models()
+    state_changed.emit()
+
+
+func queue_warrior() -> void:
+    for city in cities:
+        if int(city["owner"]) == PLAYER and (selected_city_id < 0 or int(city["id"]) == selected_city_id):
+            city["project"] = "warrior"
+            city["progress"] = 0
+            selected_city_id = int(city["id"])
+            state_changed.emit()
+            return
+
+
+func end_turn() -> void:
+    turns += 1
+    for unit in units:
+        unit["moved"] = false
+    for city in cities:
+        city["food"] = int(city["food"]) + 2
+        if int(city["food"]) >= 12 + int(city["population"]) * 5:
+            city["population"] = int(city["population"]) + 1
+            city["food"] = 0
+            city["production"] = 3 + int(city["population"])
+        if str(city["project"]) == "warrior":
+            city["progress"] = int(city["progress"]) + int(city["production"])
+            if int(city["progress"]) >= 12:
+                _spawn_unit(int(city["owner"]), "warrior", city["coords"])
+                city["project"] = ""
+                city["progress"] = 0
+    if turns == 3 and city_count(RIVAL) == 0:
+        for unit in units.duplicate():
+            if int(unit["owner"]) == RIVAL and str(unit["kind"]) == "settler":
+                var enemy_cell: Vector2i = unit["coords"]
+                cities.append({
+                    "id": _id_counter, "owner": RIVAL,
+                    "name": "Valdoria", "coords": enemy_cell, "population": 1,
+                    "food": 0, "production": 3, "project": "", "progress": 0
+                })
+                _id_counter += 1
+                units.erase(unit)
+                break
+    _draw_models()
+    state_changed.emit()
+
+
+func _on_hex_selected(cell: Vector2i) -> void:
+    for unit in units:
+        if int(unit["owner"]) == PLAYER and unit["coords"] == cell:
+            active_unit_id = int(unit["id"])
+            _draw_models()
+            state_changed.emit()
+            return
+    for city in cities:
+        if int(city["owner"]) == PLAYER and city["coords"] == cell:
+            selected_city_id = int(city["id"])
+            active_unit_id = -1
+            _draw_models()
+            state_changed.emit()
+            return
+
+
+func _unhandled_input(event: InputEvent) -> void:
+    if event is InputEventKey:
+        var key: InputEventKey = event
+        if not key.pressed or key.echo:
+            return
+        if key.keycode == KEY_F:
+            found_city()
+        elif key.keycode == KEY_E:
+            end_turn()
+        elif key.keycode == KEY_J:
+            next_player_unit()
+    elif event is InputEventMouseButton:
+        var mouse: InputEventMouseButton = event
+        if mouse.pressed and mouse.button_index == MOUSE_BUTTON_RIGHT:
+            # Um clique direito é uma ordem; o terreno continua selecionável pelo esquerdo.
+            var target: Vector2i = world.cell_at_screen(mouse.position)
+            _move_selected(target)
+
+
+func _move_selected(target: Vector2i) -> void:
+    if not world.tiles.has(target) or bool(world.tiles[target]["water"]):
+        return
+    var active: Dictionary = get_active()
+    if active.is_empty() or int(active["owner"]) != PLAYER or bool(active["moved"]):
+        return
+    if _hex_distance(active["coords"], target) != 1:
+        return
+    for unit in units:
+        if unit["coords"] == target and int(unit["owner"]) != PLAYER:
+            # Primeiro sistema de combate: ataque adjacente.
+            units.erase(unit)
+            break
+        elif unit["coords"] == target and int(unit["owner"]) == PLAYER:
+            return
+    active["coords"] = target
+    active["moved"] = true
+    _draw_models()
+    state_changed.emit()
+
+
+func _draw_models() -> void:
+    for child in _models.get_children():
+        child.queue_free()
+    for city in cities:
+        _make_city_model(city)
+    for unit in units:
+        _make_unit_model(unit)
+
+
+func _make_unit_model(unit: Dictionary) -> void:
+    var model: Node3D = Node3D.new()
+    model.name = "Unidade_%d_%s" % [int(unit["id"]), str(unit["kind"])]
+    model.position = world.tiles[unit["coords"]]["position"] + Vector3(0, 0.30, 0)
+    _models.add_child(model)
+    var color: Color = Color("#4bc9f1") if int(unit["owner"]) == PLAYER else Color("#e9a16c")
+    var is_settler: bool = str(unit["kind"]) == "settler"
+
+    var body: CylinderMesh = CylinderMesh.new()
+    body.top_radius = 0.20
+    body.bottom_radius = 0.27
+    body.height = 0.80
+    body.radial_segments = 8
+    var torso: MeshInstance3D = MeshInstance3D.new()
+    torso.mesh = body
+    torso.position.y = 0.47
+    torso.material_override = _mat(color)
+    model.add_child(torso)
+
+    var head: SphereMesh = SphereMesh.new()
+    head.radius = 0.21
+    head.height = 0.42
+    var face: MeshInstance3D = MeshInstance3D.new()
+    face.mesh = head
+    face.position.y = 1.10
+    face.material_override = _mat(Color("#eed3a8"))
+    model.add_child(face)
+
+    var banner: BoxMesh = BoxMesh.new()
+    banner.size = Vector3(0.68, 0.39, 0.055)
+    var cloth: MeshInstance3D = MeshInstance3D.new()
+    cloth.mesh = banner
+    cloth.material_override = _mat(color)
+    cloth.position = Vector3(0.35, 1.52, 0)
+    model.add_child(cloth)
+
+    var pole: CylinderMesh = CylinderMesh.new()
+    pole.top_radius = 0.035
+    pole.bottom_radius = 0.045
+    pole.height = 1.72
+    var staff: MeshInstance3D = MeshInstance3D.new()
+    staff.mesh = pole
+    staff.position = Vector3(0.0, 0.90, 0.0)
+    staff.material_override = _mat(Color("#70583b"))
+    model.add_child(staff)
+
+    var sign: Label3D = Label3D.new()
+    sign.text = "COLONO" if is_settler else "GUERREIRO"
+    sign.font_size = 32
+    sign.pixel_size = 0.0045
+    sign.outline_size = 8
+    sign.position.y = 2.11
+    sign.modulate = Color("#f1f0da")
+    sign.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+    model.add_child(sign)
+
+    if int(unit["id"]) == active_unit_id:
+        var ring: MeshInstance3D = MeshInstance3D.new()
+        var cylinder: CylinderMesh = CylinderMesh.new()
+        cylinder.top_radius = 0.74
+        cylinder.bottom_radius = 0.74
+        cylinder.height = 0.045
+        ring.mesh = cylinder
+        ring.position.y = 0.06
+        ring.material_override = _mat(Color("#ffda7c"))
+        model.add_child(ring)
+
+
+func _make_city_model(city: Dictionary) -> void:
+    var model: Node3D = Node3D.new()
+    model.name = "Cidade_%d" % int(city["id"])
+    model.position = world.tiles[city["coords"]]["position"]
+    _models.add_child(model)
+    var tint: Color = Color("#4bc9f1") if int(city["owner"]) == PLAYER else Color("#e9a16c")
+    var foundation: CylinderMesh = CylinderMesh.new()
+    foundation.top_radius = 0.80
+    foundation.bottom_radius = 1.01
+    foundation.height = 0.22
+    var square: MeshInstance3D = MeshInstance3D.new()
+    square.mesh = foundation
+    square.position.y = 0.14
+    square.material_override = _mat(Color("#d1b992"))
+    model.add_child(square)
+
+    for i in range(4):
+        var building: MeshInstance3D = MeshInstance3D.new()
+        var house: BoxMesh = BoxMesh.new()
+        house.size = Vector3(0.38, 0.42 + 0.06 * float(i), 0.37)
+        building.mesh = house
+        building.position = Vector3(-0.35 + float(i % 2) * 0.70, 0.45, -0.35 + float(i / 2) * 0.70)
+        building.material_override = _mat(Color("#eee3c7"))
+        model.add_child(building)
+    var sign: Label3D = Label3D.new()
+    sign.text = "%s  •  %d" % [str(city["name"]), int(city["population"])]
+    sign.font_size = 34
+    sign.pixel_size = 0.005
+    sign.outline_size = 7
+    sign.position.y = 1.85
+    sign.modulate = tint
+    sign.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+    model.add_child(sign)
+
+
+func _mat(tint: Color) -> StandardMaterial3D:
+    var material: StandardMaterial3D = StandardMaterial3D.new()
+    material.albedo_color = tint
+    material.roughness = 0.95
+    return material
