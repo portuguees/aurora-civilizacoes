@@ -429,8 +429,11 @@ func _draw_models() -> void:
         _models.remove_child(child)
         child.queue_free()
     for city in cities:
-        _make_city_model(city)
+        if int(city["owner"]) == PLAYER or visible_hexes.has(city["coords"]):
+            _make_city_model(city)
     for district in districts:
+        if int(district["owner"]) != PLAYER and not visible_hexes.has(district["coords"]):
+            continue
         var built_model: Node3D = DistrictVisuals.make(str(district["kind"]))
         built_model.name = "Distrito_%d_%s" % [int(district["id"]), str(district["kind"])]
         built_model.position = world.tiles[district["coords"]]["position"]
@@ -470,7 +473,15 @@ func _refresh_infrastructure() -> void:
     for child in _infrastructure.get_children():
         _infrastructure.remove_child(child)
         child.queue_free()
-    var infrastructure: Node3D = TerritoryVisuals.build(world.tiles, cities, districts)
+    var observed_cities: Array[Dictionary] = []
+    var observed_districts: Array[Dictionary] = []
+    for city in cities:
+        if int(city["owner"]) == PLAYER or visible_hexes.has(city["coords"]):
+            observed_cities.append(city)
+    for district in districts:
+        if int(district["owner"]) == PLAYER or visible_hexes.has(district["coords"]):
+            observed_districts.append(district)
+    var infrastructure: Node3D = TerritoryVisuals.build(world.tiles, observed_cities, observed_districts)
     _infrastructure.add_child(infrastructure)
 
 
