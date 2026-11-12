@@ -3,6 +3,7 @@ extends Node3D
 ## Este script não contém simulação; M1 introduzirá entidades e turnos em módulos separados.
 
 signal map_ready
+signal hex_selected(cell: Vector2i)
 
 const WIDTH: int = 32
 const HEIGHT: int = 24
@@ -294,6 +295,7 @@ func _select_under_mouse(mouse_pos: Vector2) -> void:
     _selection_mesh.position = tiles[nearest]["position"] + Vector3(0.0, 0.11, 0.0)
     if hud.has_method("set_selection"):
         hud.set_selection(nearest, str(tiles[nearest]["biome"]))
+    hex_selected.emit(nearest)
 
 
 func focus_center() -> void:
@@ -302,3 +304,23 @@ func focus_center() -> void:
 
 func new_map() -> void:
     regenerate(randi_range(100000, 900000))
+
+
+func cell_at_screen(mouse_pos: Vector2) -> Vector2i:
+    var origin: Vector3 = camera.project_ray_origin(mouse_pos)
+    var direction: Vector3 = camera.project_ray_normal(mouse_pos)
+    if absf(direction.y) < 0.001:
+        return Vector2i(-1, -1)
+    var t: float = (SEA_LEVEL - origin.y) / direction.y
+    if t <= 0.0:
+        return Vector2i(-1, -1)
+    var hit: Vector3 = origin + direction * t
+    var result: Vector2i = Vector2i(-1, -1)
+    var best: float = RADIUS * RADIUS * 2.5
+    for cell in tiles:
+        var center: Vector3 = tiles[cell]["position"]
+        var d: float = Vector2(hit.x - center.x, hit.z - center.z).length_squared()
+        if d < best:
+            best = d
+            result = cell
+    return result
