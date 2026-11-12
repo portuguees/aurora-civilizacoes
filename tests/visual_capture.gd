@@ -3,6 +3,7 @@ extends SceneTree
 ## Captura um frame do Godot com a capital, um distrito, fronteiras e HUD.
 
 const DistrictRules = preload("res://scripts/district_rules.gd")
+const Navigation = preload("res://scripts/hex_navigation.gd")
 
 
 func _initialize() -> void:
@@ -41,6 +42,29 @@ func _capture() -> void:
     if game.districts.is_empty():
         _fail("VISUAL: o distrito não concluiu a construção")
         return
+    # Preparar uma situação visual controlada de combate adjacente.
+    game.next_player_unit()
+    var warrior: Dictionary = game.get_active()
+    if warrior.is_empty() or str(warrior["kind"]) != "warrior":
+        _fail("VISUAL: não foi possível selecionar os guerreiros")
+        return
+    var rival_spot: Vector2i = Vector2i(-1, -1)
+    for cell in Navigation.neighbors(warrior["coords"]):
+        if world.tiles.has(cell) and Navigation.movement_cost(world.tiles[cell]) > 0:
+            if game.unit_at(cell).is_empty() and cell != city["coords"] and cell != campus:
+                rival_spot = cell
+                break
+    if rival_spot.x < 0:
+        _fail("VISUAL: não existe local para o confronto")
+        return
+    game._spawn_unit(1, "warrior", rival_spot)
+    warrior["move_points"] = 3
+    if not game.issue_order(rival_spot):
+        _fail("VISUAL: confronto militar recusado")
+        return
+    if int(warrior["health"]) >= 100:
+        _fail("VISUAL: a barra de vida não foi atualizada")
+        return
     world.rig.center_on(world.tiles[city["coords"]]["position"])
     var cam: Camera3D = world.get_node("CameraRig/Camera3D")
     cam.size = 20.5
@@ -67,9 +91,9 @@ func _capture() -> void:
     if frame == null or frame.get_width() < 700 or frame.get_height() < 400:
         _fail("VISUAL: não foi possível obter uma imagem do jogo")
         return
-    var output: String = "res://visual-m25.png"
+    var output: String = "res://visual-m3.png"
     if frame.save_png(output) != OK:
         _fail("VISUAL: não foi possível escrever a captura PNG")
         return
-    print("M25_VISUAL_OK: cena renderizada ", frame.get_width(), "x", frame.get_height(), "; cidades, guerreiros, estradas, fronteiras e HUD")
+    print("M3_VISUAL_OK: cena renderizada , frame.get_width(), "x", frame.get_height(), "; cidade, combate, barras de vida, nevoeiro, estradas e HUD")
     quit(0)
