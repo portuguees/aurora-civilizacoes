@@ -1,0 +1,31 @@
+# AURORA — Civilizações
+
+**Jogo original de estratégia 4X por turnos**, em Godot 4.7.2 (GDScript), inspirado nos princípios de exploração, expansão, desenvolvimento e conquista do género *Civilization*. Arte, nomes, interface e código próprios.
+
+> **Estado atual: preparação do repositório.** O jogo Godot ainda **não foi importado para `main`**. Não considerar esta branch uma build jogável até existir `project.godot` e os testes de arranque passarem. Os ZIPs históricos do Aurora são protótipos experimentais, não versões estáveis.
+
+## Objetivo
+
+Criar um mundo **3D estilizado com hexágonos**, com cidades visíveis, unidades reconhecíveis, produção por turnos, exploração, investigação, combate, IA e uma interface clara. O primeiro marco não é um jogo completo: é uma demonstração integrada de **30 turnos** que arranca, funciona e pode ser guardada.
+
+## Ferramentas e estrutura pretendida
+
+- **Godot 4.7.2**, GDScript, renderização GL Compatibility.
+- **Blender → glTF/GLB** para modelos 3D originais e animados.
+- `scenes/` — cenas; `scripts/` — lógica organizada por domínio; `assets/` — arte licenciada; `tests/` — testes automatizados; `docs/` — arquitetura e marcos.
+- **GitHub Issues e Pull Requests** para desenvolver por etapas e preservar uma base conhecida.
+
+## Primeira tarefa
+
+Importar a base visual 3D mais sólida (referência: mapa da V8), **sem substituir o projeto por uma versão 2D**, e executar um teste de abertura real no Godot. Só depois acrescentar colonos, guerreiros, cidades e interface, um sistema de cada vez.
+
+Consulta [o plano de desenvolvimento](docs/PLANO.md) e [os critérios de aceitação](docs/QUALIDADE.md).
+
+## Trabalhar neste projeto
+
+1. Criar uma branch curta a partir de `main`.
+2. Alterar **um subsistema** e acrescentar um teste correspondente.
+3. Abrir um Pull Request com capturas reais, instruções de teste e limitações conhecidas.
+4. Integrar na `main` só depois de validar arranque, simulação e interface.
+
+O código e os gráficos de *Sid Meier's Civilization* não são redistribuídos neste repositório. Os recursos de terceiros terão de ter licença documentada.
