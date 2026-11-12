@@ -1,0 +1,24 @@
+# Godot 4.x
+.godot/
+.import/
+*.tmp
+*.bak
+*.log
+# Exports
+build/
+dist/
+exports/
+# Blender recovery
+*.blend1
+*.blend2
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+# Never version credentials
+.env
+.env.*
+!.env.example
+*.key
+*.p12
