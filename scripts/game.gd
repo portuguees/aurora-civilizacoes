@@ -10,6 +10,7 @@ const DistrictVisuals = preload("res://scripts/district_visuals.gd")
 
 const PLAYER: int = 0
 const RIVAL: int = 1
+const SAVE_PATH: String = "user://aurora_campanha.json"
 
 var world: Variant
 var turns: int = 1
@@ -511,3 +512,104 @@ func _mat(tint: Color) -> StandardMaterial3D:
     material.albedo_color = tint
     material.roughness = 0.95
     return material
+
+
+## Gravação M2: todos os estados simulados usam dados JSON simples.
+## Os modelos 3D são reconstruídos ao restaurar a partida.
+func save_game() -> bool:
+    var file: FileAccess = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+    if file == null:
+        return false
+    var data: Dictionary = {
+        "format": 2,
+        "seed": world.seed_value,
+        "turns": turns,
+        "treasury": treasury,
+        "science": accumulated_science,
+        "next_id": _id_counter,
+        "active_unit": active_unit_id,
+        "selected_city": selected_city_id,
+        "units": _encode_entries(units),
+        "cities": _encode_entries(cities),
+        "districts": _encode_entries(districts)
+    }
+    file.store_string(JSON.stringify(data))
+    file.close()
+    return true
+
+
+func has_save() -> bool:
+    return FileAccess.file_exists(SAVE_PATH)
+
+
+func load_game() -> bool:
+    if not has_save():
+        return false
+    var file: FileAccess = FileAccess.open(SAVE_PATH, FileAccess.READ)
+    if file == null:
+        return false
+    var parsed: Variant = JSON.parse_string(file.get_as_text())
+    file.close()
+    if not parsed is Dictionary:
+        return false
+    var data: Dictionary = parsed
+    if int(data.get("format", 0)) != 2:
+        return false
+    if not data.has("units") or not data.has("cities") or not data.has("districts"):
+        return false
+    var saved_seed: int = int(data.get("seed", world.seed_value))
+    if saved_seed != int(world.seed_value):
+        world.regenerate(saved_seed)
+    units = _decode_entries(data["units"])
+    cities = _decode_entries(data["cities"])
+    districts = _decode_entries(data["districts"])
+    turns = maxi(1, int(data.get("turns", 1)))
+    treasury = int(data.get("treasury", 90))
+    accumulated_science = int(data.get("science", 0))
+    _id_counter = maxi(1, int(data.get("next_id", 1)))
+    active_unit_id = int(data.get("active_unit", -1))
+    selected_city_id = int(data.get("selected_city", -1))
+    placing_district = ""
+    _draw_models()
+    var active: Dictionary = get_active()
+    if not active.is_empty() and world.tiles.has(active["coords"]):
+        world.rig.center_on(world.tiles[active["coords"]]["position"])
+    else:
+        var city: Dictionary = get_selected_city()
+        if not city.is_empty() and world.tiles.has(city["coords"]):
+            world.rig.center_on(world.tiles[city["coords"]]["position"])
+    state_changed.emit()
+    return true
+
+
+func _encode_entries(entries: Array[Dictionary]) -> Array:
+    var encoded: Array = []
+    for entry in entries:
+        var item: Dictionary = entry.duplicate(true)
+        var coords: Vector2i = item.get("coords", Vector2i(-1, -1))
+        item["coords"] = [coords.x, coords.y]
+        if item.has("site"):
+            var site: Vector2i = item["site"]
+            item["site"] = [site.x, site.y]
+        encoded.append(item)
+    return encoded
+
+
+func _decode_entries(entries: Array) -> Array[Dictionary]:
+    var decoded: Array[Dictionary] = []
+    for entry in entries:
+        if not entry is Dictionary:
+            continue
+        var item: Dictionary = entry.duplicate(true)
+        var xy: Array = item.get("coords", [-1, -1])
+        if xy.size() != 2:
+            continue
+        item["coords"] = Vector2i(int(xy[0]), int(xy[1]))
+        if item.has("site"):
+            var site: Array = item["site"]
+            if site.size() == 2:
+                item["site"] = Vector2i(int(site[0]), int(site[1]))
+            else:
+                item["site"] = Vector2i(-1, -1)
+        decoded.append(item)
+    return decoded
