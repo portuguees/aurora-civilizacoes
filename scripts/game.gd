@@ -7,6 +7,9 @@ signal state_changed
 const CityRules = preload("res://scripts/city_rules.gd")
 const DistrictRules = preload("res://scripts/district_rules.gd")
 const DistrictVisuals = preload("res://scripts/district_visuals.gd")
+const CityVisuals = preload("res://scripts/city_visuals.gd")
+const UnitVisuals = preload("res://scripts/unit_visuals.gd")
+const TerritoryVisuals = preload("res://scripts/territory_visuals.gd")
 
 const PLAYER: int = 0
 const RIVAL: int = 1
@@ -25,6 +28,7 @@ var selected_city_id: int = -1
 var _id_counter: int = 1
 var _models: Node3D
 var _overlays: Node3D
+var _infrastructure: Node3D
 
 
 func _ready() -> void:
@@ -35,6 +39,9 @@ func _ready() -> void:
     _overlays = Node3D.new()
     _overlays.name = "MarcadoresDeTerreno"
     add_child(_overlays)
+    _infrastructure = Node3D.new()
+    _infrastructure.name = "EstradasEFronteiras"
+    add_child(_infrastructure)
     world.map_ready.connect(_new_session)
     world.hex_selected.connect(_on_hex_selected)
 
@@ -411,117 +418,32 @@ func _draw_models() -> void:
         _models.add_child(built_model)
     for unit in units:
         _make_unit_model(unit)
+    _refresh_infrastructure()
     _refresh_overlays()
 
 
 func _make_unit_model(unit: Dictionary) -> void:
-    var model: Node3D = Node3D.new()
+    var model: Node3D = UnitVisuals.make(unit, int(unit["id"]) == active_unit_id)
     model.name = "Unidade_%d_%s" % [int(unit["id"]), str(unit["kind"])]
-    model.position = world.tiles[unit["coords"]]["position"] + Vector3(0, 0.30, 0)
+    model.position = world.tiles[unit["coords"]]["position"] + Vector3(0.0, 0.30, 0.0)
     _models.add_child(model)
-    var color: Color = Color("#4bc9f1") if int(unit["owner"]) == PLAYER else Color("#e9a16c")
-    var is_settler: bool = str(unit["kind"]) == "settler"
-
-    var body: CylinderMesh = CylinderMesh.new()
-    body.top_radius = 0.20
-    body.bottom_radius = 0.27
-    body.height = 0.80
-    body.radial_segments = 8
-    var torso: MeshInstance3D = MeshInstance3D.new()
-    torso.mesh = body
-    torso.position.y = 0.47
-    torso.material_override = _mat(color)
-    model.add_child(torso)
-
-    var head: SphereMesh = SphereMesh.new()
-    head.radius = 0.21
-    head.height = 0.42
-    var face: MeshInstance3D = MeshInstance3D.new()
-    face.mesh = head
-    face.position.y = 1.10
-    face.material_override = _mat(Color("#eed3a8"))
-    model.add_child(face)
-
-    var banner: BoxMesh = BoxMesh.new()
-    banner.size = Vector3(0.68, 0.39, 0.055)
-    var cloth: MeshInstance3D = MeshInstance3D.new()
-    cloth.mesh = banner
-    cloth.material_override = _mat(color)
-    cloth.position = Vector3(0.35, 1.52, 0)
-    model.add_child(cloth)
-
-    var pole: CylinderMesh = CylinderMesh.new()
-    pole.top_radius = 0.035
-    pole.bottom_radius = 0.045
-    pole.height = 1.72
-    var staff: MeshInstance3D = MeshInstance3D.new()
-    staff.mesh = pole
-    staff.position = Vector3(0.0, 0.90, 0.0)
-    staff.material_override = _mat(Color("#70583b"))
-    model.add_child(staff)
-
-    var sign: Label3D = Label3D.new()
-    sign.text = "COLONO" if is_settler else "GUERREIRO"
-    sign.font_size = 32
-    sign.pixel_size = 0.0045
-    sign.outline_size = 8
-    sign.position.y = 2.11
-    sign.modulate = Color("#f1f0da")
-    sign.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-    model.add_child(sign)
-
-    if int(unit["id"]) == active_unit_id:
-        var ring: MeshInstance3D = MeshInstance3D.new()
-        var cylinder: CylinderMesh = CylinderMesh.new()
-        cylinder.top_radius = 0.74
-        cylinder.bottom_radius = 0.74
-        cylinder.height = 0.045
-        ring.mesh = cylinder
-        ring.position.y = 0.06
-        ring.material_override = _mat(Color("#ffda7c"))
-        model.add_child(ring)
 
 
 func _make_city_model(city: Dictionary) -> void:
-    var model: Node3D = Node3D.new()
+    var model: Node3D = CityVisuals.make(city)
     model.name = "Cidade_%d" % int(city["id"])
     model.position = world.tiles[city["coords"]]["position"]
     _models.add_child(model)
-    var tint: Color = Color("#4bc9f1") if int(city["owner"]) == PLAYER else Color("#e9a16c")
-    var foundation: CylinderMesh = CylinderMesh.new()
-    foundation.top_radius = 0.80
-    foundation.bottom_radius = 1.01
-    foundation.height = 0.22
-    var square: MeshInstance3D = MeshInstance3D.new()
-    square.mesh = foundation
-    square.position.y = 0.14
-    square.material_override = _mat(Color("#d1b992"))
-    model.add_child(square)
-
-    for i in range(mini(4 + maxi(0, int(city["population"]) - 1), 6)):
-        var building: MeshInstance3D = MeshInstance3D.new()
-        var house: BoxMesh = BoxMesh.new()
-        house.size = Vector3(0.38, 0.42 + 0.06 * float(i), 0.37)
-        building.mesh = house
-        building.position = Vector3(-0.35 + float(i % 2) * 0.70, 0.45, -0.35 + float(i / 2) * 0.70)
-        building.material_override = _mat(Color("#eee3c7"))
-        model.add_child(building)
-    var sign: Label3D = Label3D.new()
-    sign.text = "%s  •  %d" % [str(city["name"]), int(city["population"])]
-    sign.font_size = 34
-    sign.pixel_size = 0.005
-    sign.outline_size = 7
-    sign.position.y = 1.85
-    sign.modulate = tint
-    sign.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-    model.add_child(sign)
 
 
-func _mat(tint: Color) -> StandardMaterial3D:
-    var material: StandardMaterial3D = StandardMaterial3D.new()
-    material.albedo_color = tint
-    material.roughness = 0.95
-    return material
+func _refresh_infrastructure() -> void:
+    if _infrastructure == null:
+        return
+    for child in _infrastructure.get_children():
+        _infrastructure.remove_child(child)
+        child.queue_free()
+    var infrastructure: Node3D = TerritoryVisuals.build(world.tiles, cities, districts)
+    _infrastructure.add_child(infrastructure)
 
 
 ## Gravação M2: todos os estados simulados usam dados JSON simples.
