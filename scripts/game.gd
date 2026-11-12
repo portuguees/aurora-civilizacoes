@@ -419,6 +419,7 @@ func unit_at(cell: Vector2i) -> Dictionary:
 
 
 func _draw_models() -> void:
+    _calculate_visibility()
     _old_unit_positions.clear()
     for child in _models.get_children():
         if str(child.name).begins_with("Unidade_"):
@@ -435,7 +436,8 @@ func _draw_models() -> void:
         built_model.position = world.tiles[district["coords"]]["position"]
         _models.add_child(built_model)
     for unit in units:
-        _make_unit_model(unit)
+        if int(unit["owner"]) == PLAYER or visible_hexes.has(unit["coords"]):
+            _make_unit_model(unit)
     _refresh_infrastructure()
     _refresh_overlays()
     _refresh_exploration()
@@ -472,7 +474,7 @@ func _refresh_infrastructure() -> void:
     _infrastructure.add_child(infrastructure)
 
 
-func _refresh_exploration() -> void:
+func _calculate_visibility() -> void:
     visible_hexes.clear()
     for unit in units:
         if int(unit["owner"]) == PLAYER:
@@ -480,6 +482,12 @@ func _refresh_exploration() -> void:
     for city in cities:
         if int(city["owner"]) == PLAYER:
             _reveal_around(city["coords"], 4)
+
+
+func _refresh_exploration() -> void:
+    _calculate_visibility()
+    if world.hud.has_method("refresh_exploration"):
+        world.hud.refresh_exploration(explored, visible_hexes)
     if _fog == null:
         return
     for child in _fog.get_children():
