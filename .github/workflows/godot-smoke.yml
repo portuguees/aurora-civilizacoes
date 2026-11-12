@@ -38,6 +38,12 @@ jobs:
           set -o pipefail
           godot --headless --path . --script res://tests/game_smoke.gd 2>&1 | tee godot-m1.log
           grep -q "M1_SMOKE_OK" godot-m1.log
+      - name: Testar cidades, produção e distritos 3D
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . --script res://tests/city_smoke.gd 2>&1 | tee godot-m2.log
+          grep -q "M2_SMOKE_OK" godot-m2.log
       - name: Guardar logs para diagnóstico
         if: always()
         uses: actions/upload-artifact@v4
@@ -47,4 +53,5 @@ jobs:
             godot-import.log
             godot-smoke.log
             godot-m1.log
+            godot-m2.log
           if-no-files-found: ignore
