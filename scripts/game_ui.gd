@@ -9,6 +9,10 @@ var _found: Button
 var _warrior: Button
 var _unit: Button
 var _end: Button
+var _project: Label
+var _placement: Label
+var _district_buttons: Dictionary = {}
+var _focus_buttons: Array[Button] = []
 
 
 func _ready() -> void:
@@ -42,9 +46,9 @@ func _create_ui() -> void:
     actions.anchor_right = 1.0
     actions.anchor_top = 1.0
     actions.anchor_bottom = 1.0
-    actions.offset_left = -355.0
+    actions.offset_left = -395.0
     actions.offset_right = -16.0
-    actions.offset_top = -335.0
+    actions.offset_top = -545.0
     actions.offset_bottom = -102.0
     root.add_child(actions)
 
@@ -61,12 +65,53 @@ func _create_ui() -> void:
     column.add_child(_unit)
     _warrior = _button("PRODUZIR GUERREIRO", _game.queue_warrior)
     column.add_child(_warrior)
+    _project = _label("Nenhum projeto selecionado.", 12, Color("#ecce94"))
+    column.add_child(_project)
+    var build_label: Label = _label("DISTRITOS E MELHORIAS  ·  CLICAR NO MAPA", 11, Color("#d7b47c"))
+    column.add_child(build_label)
+    var first: HBoxContainer = HBoxContainer.new()
+    column.add_child(first)
+    var second: HBoxContainer = HBoxContainer.new()
+    column.add_child(second)
+    for kind in ["campus", "market", "industrial", "barracks", "harbor", "farm", "mine"]:
+        var row: HBoxContainer = first if kind in ["campus", "market", "industrial"] else second
+        var btn: Button = _button(_short_district_name(kind), _game.choose_district.bind(kind))
+        btn.custom_minimum_size.x = 93.0
+        row.add_child(btn)
+        _district_buttons[kind] = btn
+    _placement = _label("Escolhe um distrito e depois um hexágono válido.", 11, Color("#cfdfdc"))
+    column.add_child(_placement)
+    var focus_row: HBoxContainer = HBoxContainer.new()
+    column.add_child(focus_row)
+    for option in ["balanced", "food", "production"]:
+        var focus_button: Button = _button(_focus_name(option), _game.set_city_focus.bind(option))
+        focus_row.add_child(focus_button)
+        _focus_buttons.append(focus_button)
     _end = _button("TERMINAR TURNO   [E]", _game.end_turn)
     column.add_child(_end)
 
     var controls: Label = _label("Clique esquerdo: selecionar
 Clique direito: mover 1 hexágono", 11, Color("#aec7c8"))
     column.add_child(controls)
+
+
+func _short_district_name(kind: String) -> String:
+    match kind:
+        "campus": return "Academia"
+        "market": return "Mercado"
+        "industrial": return "Oficinas"
+        "barracks": return "Quartel"
+        "harbor": return "Porto"
+        "farm": return "Quinta"
+        "mine": return "Mina"
+    return kind
+
+
+func _focus_name(kind: String) -> String:
+    match kind:
+        "food": return "Alimentos"
+        "production": return "Produção"
+    return "Equilibrado"
 
 
 func _panel() -> PanelContainer:
@@ -112,5 +157,30 @@ func _refresh() -> void:
     else:
         _summary.text = "Seleciona o colono para fundar a capital."
     _found.disabled = not _game.can_found()
-    _warrior.disabled = _game.city_count() == 0
+    var city: Dictionary = _game.get_selected_city()
+    _warrior.disabled = city.is_empty() or str(city.get("project", "")) != ""
     _unit.disabled = _game.player_unit_count() == 0
+    for kind in _district_buttons:
+        var unavailable: bool = city.is_empty() or str(city.get("project", "")) != ""
+        _district_buttons[kind].disabled = unavailable
+    for button in _focus_buttons:
+        button.disabled = city.is_empty()
+    if not city.is_empty():
+        var yields: Dictionary = _game.get_city_yields(city)
+        var project: String = str(city.get("project", ""))
+        _project.text = "%s · pop %d · alimentos %+d · produção %d" % [
+            str(city["name"]), int(city["population"]),
+            int(yields["food_surplus"]), int(yields["production"])
+        ]
+        if project != "":
+            _project.text += "\nObra: %s  %d / %d" % [
+                _short_district_name(project), int(city["progress"]),
+                int(_game.DistrictRules.COSTS.get(project, 12))
+            ]
+    else:
+        _project.text = "Seleciona ou funda uma cidade para construir."
+    if _game.placing_district != "":
+        _placement.text = "COLOCAÇÃO: %s · clica numa parcela válida · ESC cancela" % _short_district_name(_game.placing_district)
+    else:
+        _placement.text = "Seleciona um distrito e depois uma parcela junto da cidade."
+
