@@ -31,8 +31,8 @@ func _create_ui() -> void:
     add_child(root)
 
     var ribbon: PanelContainer = _panel()
-    ribbon.position = Vector2(16, 83)
     ribbon.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+    ribbon.position = Vector2(18, 82)
     root.add_child(ribbon)
     var line: HBoxContainer = HBoxContainer.new()
     line.add_theme_constant_override("separation", 18)
@@ -152,8 +152,8 @@ func _button(text_value: String, callback: Callable) -> Button:
 
 func _refresh() -> void:
     _turn.text = "TURNO %d" % int(_game.turns)
-    _resource.text = "OURO  100   •   CIÊNCIA  %d   •   CIDADES  %d" % [
-        (int(_game.turns) - 1) * 2, int(_game.city_count())
+    _resource.text = "OURO  %d   •   CIÊNCIA  %d   •   CIDADES  %d" % [
+        int(_game.treasury), int(_game.accumulated_science), int(_game.city_count())
     ]
     var active: Dictionary = _game.get_active()
     if not active.is_empty():

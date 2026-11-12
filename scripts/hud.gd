@@ -31,11 +31,11 @@ func _create_ui() -> void:
     header.add_child(top_row)
     var name: Label = _label("A U R O R A", 23, Color("#f2d6a1"))
     top_row.add_child(name)
-    top_row.add_child(_label("CIVILIZAÇÕES  ·  MARCO M0", 12, Color("#c6e0dc")))
+    top_row.add_child(_label("CIVILIZAÇÕES  ·  PRÉ-ALFA 3D", 12, Color("#c6e0dc")))
     var stretch: Control = Control.new()
     stretch.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     top_row.add_child(stretch)
-    top_row.add_child(_label("MAPA 3D  •  GERADOR PROCEDURAL", 12, Color("#abc6c8")))
+    top_row.add_child(_label("MUNDO  ·  ESTRATÉGIA  ·  EVOLUÇÃO", 12, Color("#abc6c8")))
     var new_button: Button = Button.new()
     new_button.text = "NOVO MUNDO [R]"
     new_button.pressed.connect(_new_map)
@@ -81,19 +81,6 @@ func _create_ui() -> void:
     action_column.add_child(_selection)
     action_column.add_child(_label("WASD: câmara  ·  Roda: zoom  ·  Botão do meio: arrastar", 11, Color("#a9c9c9")))
 
-    var milestone: PanelContainer = _panel(Color("#142e36ee"))
-    milestone.anchor_left = 1.0
-    milestone.anchor_right = 1.0
-    milestone.anchor_top = 1.0
-    milestone.anchor_bottom = 1.0
-    milestone.offset_left = -285.0
-    milestone.offset_right = -16.0
-    milestone.offset_top = -90.0
-    milestone.offset_bottom = -17.0
-    root.add_child(milestone)
-    var status: Label = _label("M0 • MAPA 3D
-Colonos, guerreiros e turnos → M1", 12, Color("#d6e4db"))
-    milestone.add_child(status)
 
 
 func _panel(tint: Color) -> PanelContainer:

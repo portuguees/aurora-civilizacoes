@@ -13,7 +13,7 @@ var _limit_z: float = 55.0
 
 func _ready() -> void:
     camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-    camera.size = 34.0
+    camera.size = 27.0
     camera.far = 450.0
     camera.position = Vector3(0.0, 47.0, 34.0)
     camera.rotation_degrees = Vector3(-54.0, 0.0, 0.0)
