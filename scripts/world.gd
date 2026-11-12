@@ -88,29 +88,29 @@ func _build_terrain() -> void:
             var dx: float = (float(x) - float(WIDTH - 1) * 0.5) / float(WIDTH) * 2.0
             var dy: float = (float(y) - float(HEIGHT - 1) * 0.5) / float(HEIGHT) * 2.0
             var rim: float = pow(dx * dx + dy * dy, 0.70)
-            var elevation: float = noise.get_noise_2d(float(x), float(y)) * 0.65 + 0.33 - rim * 0.60
+            var elevation: float = noise.get_noise_2d(float(x), float(y)) * 0.65 + 0.41 - rim * 0.52
             var water: bool = elevation < 0.06
             var height: float = SEA_LEVEL if water else 0.23 + maxf(0.0, elevation) * 1.05
             var climate_value: float = climate.get_noise_2d(float(x), float(y))
             var biome: String = "water"
-            var tile_color: Color = Color("#439ba7")
+            var tile_color: Color = Color("#328a98")
 
             if not water:
                 if elevation > 0.53:
                     biome = "mountain"
-                    tile_color = Color("#98998d")
+                    tile_color = Color("#8f9587")
                 elif elevation > 0.33:
                     biome = "hills"
-                    tile_color = Color("#929b7a")
+                    tile_color = Color("#888d73")
                 elif climate_value < -0.23:
                     biome = "plains"
-                    tile_color = Color("#c7bc85")
+                    tile_color = Color("#b7ad78")
                 elif climate_value > 0.12:
                     biome = "forest"
-                    tile_color = Color("#688e62")
+                    tile_color = Color("#537a58")
                 else:
                     biome = "grassland"
-                    tile_color = Color("#9cba78")
+                    tile_color = Color("#82a66e")
 
             var center: Vector3 = _hex_center(cell)
             center.y = height
@@ -149,9 +149,9 @@ func _build_terrain() -> void:
                     rocks.append(Transform3D(Basis().scaled(Vector3(scale_value, scale_value, scale_value)), place))
 
     _add_surface("Terras", land_tool, _material(Color.WHITE, true))
-    _add_surface("Agua", water_tool, _material(Color("#5ab3bc"), true))
-    _build_instances("Florestas", _tree_mesh(), trees, Color("#416f55"))
-    _build_instances("Rochas", _rock_mesh(), rocks, Color("#787e77"))
+    _add_surface("Agua", water_tool, _material(Color("#3e91a1"), true))
+    _build_instances("Florestas", _tree_mesh(), trees, Color("#355f48"))
+    _build_instances("Rochas", _rock_mesh(), rocks, Color("#666e6a"))
     _build_sea_backdrop()
 
 
@@ -230,7 +230,7 @@ func _build_sea_backdrop() -> void:
     plane.size = Vector2(245.0, 245.0)
     sea.mesh = plane
     sea.position.y = SEA_LEVEL - 0.15
-    sea.material_override = _material(Color("#347b8a"))
+    sea.material_override = _material(Color("#28697b"))
     sea.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     terrain.add_child(sea)
 
@@ -238,10 +238,10 @@ func _build_sea_backdrop() -> void:
 func _configure_environment() -> void:
     var environment: Environment = Environment.new()
     environment.background_mode = Environment.BG_COLOR
-    environment.background_color = Color("#adcfd0")
+    environment.background_color = Color("#86aeb5")
     environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-    environment.ambient_light_color = Color("#cde2d3")
-    environment.ambient_light_energy = 0.82
+    environment.ambient_light_color = Color("#c8d6ce")
+    environment.ambient_light_energy = 0.72
     environment_node.environment = environment
 
 
