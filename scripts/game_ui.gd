@@ -1,5 +1,6 @@
 extends CanvasLayer
-## Interface de jogo M1. Independente da HUD do mapa; nunca esconde o núcleo.
+## Interface de jogo M2: cidades, distritos e ações contextuais.
+const DistrictRules = preload("res://scripts/district_rules.gd")
 
 var _game: Variant
 var _turn: Label
@@ -175,7 +176,7 @@ func _refresh() -> void:
         if project != "":
             _project.text += "\nObra: %s  %d / %d" % [
                 _short_district_name(project), int(city["progress"]),
-                int(_game.DistrictRules.COSTS.get(project, 12))
+                int(DistrictRules.COSTS.get(project, 12))
             ]
     else:
         _project.text = "Seleciona ou funda uma cidade para construir."
