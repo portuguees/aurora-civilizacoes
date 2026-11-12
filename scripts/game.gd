@@ -472,6 +472,37 @@ func _refresh_infrastructure() -> void:
     _infrastructure.add_child(infrastructure)
 
 
+func _refresh_exploration() -> void:
+    visible_hexes.clear()
+    for unit in units:
+        if int(unit["owner"]) == PLAYER:
+            _reveal_around(unit["coords"], 3)
+    for city in cities:
+        if int(city["owner"]) == PLAYER:
+            _reveal_around(city["coords"], 4)
+    if _fog == null:
+        return
+    for child in _fog.get_children():
+        _fog.remove_child(child)
+        child.queue_free()
+    _fog.add_child(ExplorationVisuals.build(world.tiles, explored, visible_hexes))
+
+
+func _reveal_around(origin: Vector2i, radius: int) -> void:
+    for cell in world.tiles:
+        if HexNavigation.distance(cell, origin) <= radius:
+            visible_hexes[cell] = true
+            explored[cell] = true
+
+
+func discovered_count() -> int:
+    return explored.size()
+
+
+func visible_count() -> int:
+    return visible_hexes.size()
+
+
 ## Gravação M2: todos os estados simulados usam dados JSON simples.
 ## Os modelos 3D são reconstruídos ao restaurar a partida.
 func save_game() -> bool:
@@ -484,6 +515,8 @@ func save_game() -> bool:
         "turns": turns,
         "treasury": treasury,
         "science": accumulated_science,
+        "last_event": last_event,
+        "explored": _encode_explored(),
         "next_id": _id_counter,
         "active_unit": active_unit_id,
         "selected_city": selected_city_id,
@@ -525,6 +558,13 @@ func load_game() -> bool:
     treasury = int(data.get("treasury", 90))
     accumulated_science = int(data.get("science", 0))
     _id_counter = maxi(1, int(data.get("next_id", 1)))
+    explored.clear()
+    for coords in data.get("explored", []):
+        if coords is Array and coords.size() == 2:
+            var cell: Vector2i = Vector2i(int(coords[0]), int(coords[1]))
+            if world.tiles.has(cell):
+                explored[cell] = true
+    last_event = str(data.get("last_event", "Campanha retomada."))
     active_unit_id = int(data.get("active_unit", -1))
     selected_city_id = int(data.get("selected_city", -1))
     placing_district = ""
@@ -549,6 +589,11 @@ func _encode_entries(entries: Array[Dictionary]) -> Array:
         if item.has("site"):
             var site: Vector2i = item["site"]
             item["site"] = [site.x, site.y]
+        if item.has("route"):
+            var route_encoded: Array = []
+            for step in item["route"]:
+                route_encoded.append([int(step.x), int(step.y)])
+            item["route"] = route_encoded
         encoded.append(item)
     return encoded
 
@@ -569,6 +614,17 @@ func _decode_entries(entries: Array) -> Array[Dictionary]:
                 item["site"] = Vector2i(int(site[0]), int(site[1]))
             else:
                 item["site"] = Vector2i(-1, -1)
+        if item.has("route"):
+            var route_decoded: Array[Vector2i] = []
+            for step in item["route"]:
+                if step is Array and step.size() == 2:
+                    route_decoded.append(Vector2i(int(step[0]), int(step[1])))
+            item["route"] = route_decoded
+        else:
+            item["route"] = []
+        if item.has("kind"):
+            item["move_points"] = int(item.get("move_points", HexNavigation.movement_capacity(str(item["kind"]))))
+            item["target_enemy"] = int(item.get("target_enemy", -1))
         decoded.append(item)
     return decoded
 
@@ -608,3 +664,10 @@ func _overlay_hex(cell: Vector2i, prefix: String, tint: Color, radius: float) ->
     material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
     marker.material_override = material
     _overlays.add_child(marker)
+
+
+func _encode_explored() -> Array:
+    var data: Array = []
+    for cell in explored:
+        data.append([cell.x, cell.y])
+    return data
