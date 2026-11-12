@@ -90,6 +90,13 @@ func _create_ui() -> void:
         _focus_buttons.append(focus_button)
     _end = _button("TERMINAR TURNO   [E]", _game.end_turn)
     column.add_child(_end)
+    var save_row: HBoxContainer = HBoxContainer.new()
+    save_row.add_theme_constant_override("separation", 6)
+    column.add_child(save_row)
+    var save_button: Button = _button("GUARDAR CAMPANHA", _on_save)
+    save_row.add_child(save_button)
+    var load_button: Button = _button("CONTINUAR CAMPANHA", _on_load)
+    save_row.add_child(load_button)
 
     var controls: Label = _label("Clique esquerdo: selecionar
 Clique direito: mover 1 hexágono", 11, Color("#aec7c8"))
@@ -185,3 +192,17 @@ func _refresh() -> void:
     else:
         _placement.text = "Seleciona um distrito e depois uma parcela junto da cidade."
 
+
+
+func _on_save() -> void:
+    if not _game.save_game():
+        _placement.text = "Não foi possível guardar a campanha."
+    else:
+        _placement.text = "Campanha guardada no computador."
+
+
+func _on_load() -> void:
+    if not _game.load_game():
+        _placement.text = "Não existe uma gravação M2 válida."
+    else:
+        _placement.text = "Campanha retomada."
