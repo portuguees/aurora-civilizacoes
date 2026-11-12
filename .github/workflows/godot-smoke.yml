@@ -1,0 +1,43 @@
+name: Godot 4.7.2 · M0 Smoke Test
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Aurora
+        uses: actions/checkout@v4
+      - name: Instalar Godot 4.7.2 oficial
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 -o /tmp/godot.zip "https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip"
+          unzip -q /tmp/godot.zip -d /tmp
+          chmod +x /tmp/Godot_v4.7.2-stable_linux.x86_64
+          sudo mv /tmp/Godot_v4.7.2-stable_linux.x86_64 /usr/local/bin/godot
+          godot --version
+      - name: Importar projeto e analisar scripts
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --editor --path . --import --quit 2>&1 | tee godot-import.log
+      - name: Testar o mundo 3D, câmara e HUD
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . --script res://tests/smoke.gd 2>&1 | tee godot-smoke.log
+          grep -q "M0_SMOKE_OK" godot-smoke.log
+      - name: Guardar logs para diagnóstico
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-m0-logs
+          path: |
+            godot-import.log
+            godot-smoke.log
+          if-no-files-found: ignore
