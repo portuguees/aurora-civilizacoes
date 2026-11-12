@@ -31,6 +31,10 @@ func _run() -> void:
     if game.get_node_or_null("NevoeiroDaExploracao/Exploracao/NevoeiroDesconhecido") == null:
         _fail("Não existe nevoeiro visual em MultiMesh")
         return
+    # A unidade inimiga existe na simulação mas não deve atravessar o nevoeiro.
+    if game.get_node_or_null("ModelosDeJogo/Unidade_3_settler") != null:
+        _fail("Um colono rival foi mostrado através de terreno não descoberto")
+        return
     if Nav.distance(Vector2i(4, 7), Vector2i(5, 7)) != 1:
         _fail("Distância hexagonal incorreta")
         return
@@ -128,5 +132,43 @@ func _run() -> void:
     if game.get_node_or_null("NevoeiroDaExploracao/Exploracao") == null:
         _fail("O mapa perdeu o estado visual de descoberta")
         return
-    print("M3_SMOKE_OK: A*, rotas entre turnos, nevoeiro, gravação e combate progressivo")
+    # Guardar e restaurar vida e nevoeiro depois de uma batalha.
+    var saved_health: int = int(warrior["health"])
+    var saved_enemy_health: int = int(defender["health"])
+    var saved_explored: int = game.discovered_count()
+    if not game.save_game():
+        _fail("Falhou a gravação depois do combate")
+        return
+    game._new_session()
+    if not game.load_game():
+        _fail("Falhou o restauro depois do combate")
+        return
+    warrior = game.get_active()
+    if int(warrior["health"]) != saved_health or game.discovered_count() != saved_explored:
+        _fail("O restauro perdeu vida ou nevoeiro de guerra")
+        return
+    var restored_enemy: Dictionary = {}
+    for unit in game.units:
+        if int(unit["id"]) == int(defender["id"]):
+            restored_enemy = unit
+            break
+    if restored_enemy.is_empty() or int(restored_enemy["health"]) != saved_enemy_health:
+        _fail("O restauro perdeu pontos de vida da unidade adversária")
+        return
+
+    # Verificar que a IA estabelece uma guarnição militar sem intervenção do jogador.
+    game._new_session()
+    for i in range(12):
+        game.end_turn()
+    if game.city_count(1) != 1:
+        _fail("A IA não fundou a sua capital")
+        return
+    var rival_warriors: int = 0
+    for unit in game.units:
+        if int(unit["owner"]) == 1 and str(unit["kind"]) == "warrior":
+            rival_warriors += 1
+    if rival_warriors < 1:
+        _fail("A IA não recrutou guarnição militar em 12 turnos")
+        return
+    print("M3_SMOKE_OK: A*, rotas, nevoeiro, combate, PV persistentes e guarnição IA")
     quit(0)
