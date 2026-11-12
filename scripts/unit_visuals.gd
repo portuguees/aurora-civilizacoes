@@ -24,6 +24,7 @@ static func make(unit: Dictionary, selected: bool) -> Node3D:
     nameplate.position.y = 1.9
     nameplate.billboard = BaseMaterial3D.BILLBOARD_ENABLED
     root.add_child(nameplate)
+    _health_bar(root, int(unit.get("health", 100)))
     if selected:
         var ring: TorusMesh = TorusMesh.new()
         ring.inner_radius = 0.83
@@ -147,3 +148,12 @@ static func _cone(parent: Node3D, pos: Vector3, radius: float, height: float, ti
     item.position = pos
     item.material_override = _material(tint)
     parent.add_child(item)
+
+
+static func _health_bar(root: Node3D, value: int) -> void:
+    var ratio: float = clampf(float(value) / 100.0, 0.0, 1.0)
+    var tint: Color = Color("#76cc7d") if ratio > 0.65 else (Color("#edc15b") if ratio > 0.30 else Color("#e66d5f"))
+    _box(root, Vector3(0.0, 1.52, 0.06), Vector3(0.84, 0.10, 0.10), Color("#21333a"))
+    if ratio > 0.01:
+        var width: float = 0.77 * ratio
+        _box(root, Vector3(-0.385 + width * 0.5, 1.52, 0.13), Vector3(width, 0.07, 0.035), tint)

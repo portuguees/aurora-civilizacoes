@@ -12,6 +12,7 @@ var _unit: Button
 var _end: Button
 var _project: Label
 var _placement: Label
+var _news: Label
 var _district_buttons: Dictionary = {}
 var _focus_buttons: Array[Button] = []
 
@@ -47,9 +48,9 @@ func _create_ui() -> void:
     actions.anchor_right = 1.0
     actions.anchor_top = 1.0
     actions.anchor_bottom = 1.0
-    actions.offset_left = -395.0
+    actions.offset_left = -440.0
     actions.offset_right = -16.0
-    actions.offset_top = -545.0
+    actions.offset_top = -623.0
     actions.offset_bottom = -102.0
     root.add_child(actions)
 
@@ -59,6 +60,10 @@ func _create_ui() -> void:
     column.add_child(_label("CIVILIZAÇÃO  ·  AURORA", 15, Color("#f3d79d")))
     _summary = _label("A preparar a primeira expedição...", 12, Color("#e9f0e3"))
     column.add_child(_summary)
+    _news = _label("Explora o território.", 12, Color("#e7ca95"))
+    _news.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    _news.custom_minimum_size.y = 30.0
+    column.add_child(_news)
 
     _found = _button("FUNDAR CAPITAL   [F]", _game.found_city)
     column.add_child(_found)
@@ -99,7 +104,7 @@ func _create_ui() -> void:
     save_row.add_child(load_button)
 
     var controls: Label = _label("Clique esquerdo: selecionar
-Clique direito: mover 1 hexágono", 11, Color("#aec7c8"))
+Clique direito: caminho ou ataque", 11, Color("#aec7c8"))
     column.add_child(controls)
 
 
@@ -152,18 +157,23 @@ func _button(text_value: String, callback: Callable) -> Button:
 
 func _refresh() -> void:
     _turn.text = "TURNO %d" % int(_game.turns)
-    _resource.text = "OURO  %d   •   CIÊNCIA  %d   •   CIDADES  %d" % [
-        int(_game.treasury), int(_game.accumulated_science), int(_game.city_count())
+    _resource.text = "OURO %d  •  CIÊNCIA %d  •  CIDADES %d  •  EXPLORADO %d/%d" % [
+        int(_game.treasury), int(_game.accumulated_science), int(_game.city_count()),
+        int(_game.discovered_count()), int(_game.world.tiles.size())
     ]
     var active: Dictionary = _game.get_active()
     if not active.is_empty():
-        _summary.text = "Selecionado: %s | unidades: %d" % [
-            str(active["kind"]).to_upper(), _game.player_unit_count()
+        _summary.text = "%s  •  PV %d/100  •  Movimento %d/%d  •  Rota %d" % [
+            "COLONO" if str(active["kind"]) == "settler" else "GUERREIROS",
+            int(active.get("health", 100)), int(active.get("move_points", 0)),
+            int(_game.HexNavigation.movement_capacity(str(active["kind"]))),
+            active.get("route", []).size()
         ]
     elif _game.city_count() > 0:
         _summary.text = "Capital fundada! Escolhe uma produção."
     else:
         _summary.text = "Seleciona o colono para fundar a capital."
+    _news.text = str(_game.last_event)
     _found.disabled = not _game.can_found()
     var city: Dictionary = _game.get_selected_city()
     _warrior.disabled = city.is_empty() or str(city.get("project", "")) != ""
