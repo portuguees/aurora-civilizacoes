@@ -5,6 +5,9 @@ extends CanvasLayer
 var _mini: TextureRect
 var _selection: Label
 var _map_label: Label
+var _cached_tiles: Dictionary = {}
+var _map_width: int = 0
+var _map_height: int = 0
 
 
 func _ready() -> void:
@@ -104,6 +107,9 @@ func _label(value: String, size: int, tint: Color) -> Label:
 
 
 func refresh_map(source: Dictionary, width: int, height: int) -> void:
+    _cached_tiles = source
+    _map_width = width
+    _map_height = height
     var image: Image = Image.create(width, height, false, Image.FORMAT_RGBA8)
     for cell in source:
         var data: Dictionary = source[cell]
@@ -115,6 +121,21 @@ func refresh_map(source: Dictionary, width: int, height: int) -> void:
         if not bool(source[cell]["water"]):
             land += 1
     _map_label.text = "%d hexágonos  ·  %d terra" % [source.size(), land]
+
+
+func refresh_exploration(explored: Dictionary, visible: Dictionary) -> void:
+    if _cached_tiles.is_empty() or _mini == null:
+        return
+    var image: Image = Image.create(_map_width, _map_height, false, Image.FORMAT_RGBA8)
+    for cell in _cached_tiles:
+        var tint: Color = Color("#1e3c44")
+        if explored.has(cell):
+            tint = _cached_tiles[cell]["color"]
+            if not visible.has(cell):
+                tint = tint.darkened(0.42)
+        image.set_pixel(cell.x, cell.y, tint)
+    _mini.texture = ImageTexture.create_from_image(image)
+    _map_label.text = "%d/%d hexágonos descobertos" % [explored.size(), _cached_tiles.size()]
 
 
 func set_selection(cell: Vector2i, biome: String) -> void:
