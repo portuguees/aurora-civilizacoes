@@ -95,5 +95,5 @@ func _capture() -> void:
     if frame.save_png(output) != OK:
         _fail("VISUAL: não foi possível escrever a captura PNG")
         return
-    print("M3_VISUAL_OK: cena renderizada , frame.get_width(), "x", frame.get_height(), "; cidade, combate, barras de vida, nevoeiro, estradas e HUD")
+    print("M3_VISUAL_OK: cena renderizada ", frame.get_width(), "x", frame.get_height(), "; cidade, combate, barras de vida, nevoeiro, estradas e HUD")
     quit(0)
