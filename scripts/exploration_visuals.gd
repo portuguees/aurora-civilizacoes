@@ -15,8 +15,8 @@ static func build(tiles: Dictionary, explored: Dictionary, visible: Dictionary) 
             undiscovered.append(transform)
         elif not visible.has(cell):
             outside_sight.append(transform)
-    _batch(root, "NevoeiroDesconhecido", undiscovered, Color(0.055, 0.11, 0.15, 0.84), hex_radius)
-    _batch(root, "NevoeiroExplorado", outside_sight, Color(0.055, 0.09, 0.12, 0.40), hex_radius)
+    _batch(root, "NevoeiroDesconhecido", undiscovered, Color(0.18, 0.27, 0.29, 0.68), hex_radius)
+    _batch(root, "NevoeiroExplorado", outside_sight, Color(0.14, 0.24, 0.27, 0.27), hex_radius)
     return root
 
 
