@@ -1,4 +1,5 @@
 extends RefCounted
+const CityRules = preload("res://scripts/city_rules.gd")
 ## Configuração centralizada dos distritos e projetos do M2.
 ## Não depende de cenas para permitir testes determinísticos.
 
