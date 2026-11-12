@@ -43,7 +43,7 @@ func _capture() -> void:
         return
     world.rig.center_on(world.tiles[city["coords"]]["position"])
     var cam: Camera3D = world.get_node("CameraRig/Camera3D")
-    cam.size = 24.0
+    cam.size = 20.5
 
     var unit_model: Node = game.get_node_or_null("ModelosDeJogo/Unidade_2_warrior")
     var city_model: Node = game.get_node_or_null("ModelosDeJogo/Cidade_%d" % int(city["id"]))
