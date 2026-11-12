@@ -2,7 +2,7 @@
 
 **Jogo original de estratégia 4X por turnos**, em Godot 4.7.2 (GDScript), inspirado nos princípios de exploração, expansão, desenvolvimento e conquista do género *Civilization*. Arte, nomes, interface e código próprios.
 
-> **Estado atual: preparação do repositório.** O jogo Godot ainda **não foi importado para `main`**. Não considerar esta branch uma build jogável até existir `project.godot` e os testes de arranque passarem. Os ZIPs históricos do Aurora são protótipos experimentais, não versões estáveis.
+> **Estado atual:** a `main` contém apenas a estrutura e a documentação inicial. O projeto Godot está nas branches de desenvolvimento (M0 → M3); os testes automáticos do Godot 4.7.2 passaram nas últimas alterações, mas ainda falta avaliação manual numa sessão interativa. Trata-se de uma **pré-alfa**, não de uma versão comercial nem completa.
 
 ## Objetivo
 
@@ -14,6 +14,17 @@ Criar um mundo **3D estilizado com hexágonos**, com cidades visíveis, unidades
 - **Blender → glTF/GLB** para modelos 3D originais e animados.
 - `scenes/` — cenas; `scripts/` — lógica organizada por domínio; `assets/` — arte licenciada; `tests/` — testes automatizados; `docs/` — arquitetura e marcos.
 - **GitHub Issues e Pull Requests** para desenvolver por etapas e preservar uma base conhecida.
+
+## Jogar a versão em desenvolvimento (M3)
+
+1. No GitHub, selecionar a branch `feat/m3-movimento-combate-exploracao`, depois **Code → Download ZIP**.
+2. Importar `project.godot` no **Godot 4.7.2** e executar **F5**.
+3. **F** funda a capital com o colono; **J** seleciona a próxima unidade; **E** termina turno.
+4. **Clique esquerdo** seleciona; **clique direito** define uma rota de movimento ou ataque a uma unidade rival.
+5. Os percursos continuam nos turnos seguintes. O nevoeiro mostra apenas território descoberto.
+6. Os botões do painel permitem construir distritos, produzir guerreiros, guardar e continuar a campanha.
+
+Ver [M3 — Movimento, exploração e combate](docs/M3_MOVIMENTO_EXPLORACAO_COMBATE.md). Os relatórios e a captura real do Godot ficam nos artefactos da execução do GitHub Actions.
 
 ## Primeira tarefa
 
