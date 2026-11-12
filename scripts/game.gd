@@ -24,6 +24,7 @@ var active_unit_id: int = -1
 var selected_city_id: int = -1
 var _id_counter: int = 1
 var _models: Node3D
+var _overlays: Node3D
 
 
 func _ready() -> void:
@@ -31,6 +32,9 @@ func _ready() -> void:
     _models = Node3D.new()
     _models.name = "ModelosDeJogo"
     add_child(_models)
+    _overlays = Node3D.new()
+    _overlays.name = "MarcadoresDeTerreno"
+    add_child(_overlays)
     world.map_ready.connect(_new_session)
     world.hex_selected.connect(_on_hex_selected)
 
@@ -244,12 +248,14 @@ func choose_district(kind: String) -> bool:
                 return false
     placing_district = kind
     active_unit_id = -1
+    _refresh_overlays()
     state_changed.emit()
     return true
 
 
 func cancel_placement() -> void:
     placing_district = ""
+    _refresh_overlays()
     state_changed.emit()
 
 
@@ -263,6 +269,7 @@ func confirm_district(cell: Vector2i) -> bool:
     city["site"] = cell
     city["progress"] = 0
     placing_district = ""
+    _refresh_overlays()
     state_changed.emit()
     return true
 
@@ -272,6 +279,7 @@ func set_city_focus(mode: String) -> void:
     if city.is_empty() or mode not in ["balanced", "food", "production"]:
         return
     city["focus"] = mode
+    _refresh_overlays()
     state_changed.emit()
 
 
@@ -403,6 +411,7 @@ func _draw_models() -> void:
         _models.add_child(built_model)
     for unit in units:
         _make_unit_model(unit)
+    _refresh_overlays()
 
 
 func _make_unit_model(unit: Dictionary) -> void:
@@ -614,3 +623,40 @@ func _decode_entries(entries: Array) -> Array[Dictionary]:
                 item["site"] = Vector2i(-1, -1)
         decoded.append(item)
     return decoded
+
+
+## Visualização do território: verde = parcela trabalhada; dourado = local válido.
+func _refresh_overlays() -> void:
+    if _overlays == null:
+        return
+    for child in _overlays.get_children():
+        _overlays.remove_child(child)
+        child.queue_free()
+    var city: Dictionary = get_selected_city()
+    if city.is_empty():
+        return
+    var yields: Dictionary = get_city_yields(city)
+    for cell in yields["worked"]:
+        _overlay_hex(cell, "Trabalhada", Color(0.37, 0.85, 0.52, 0.48), 0.29)
+    if placing_district != "":
+        for cell in world.tiles:
+            if DistrictRules.can_place(placing_district, cell, city, world.tiles, cities, districts):
+                _overlay_hex(cell, "Disponivel", Color(1.0, 0.80, 0.31, 0.61), 0.62)
+
+
+func _overlay_hex(cell: Vector2i, prefix: String, tint: Color, radius: float) -> void:
+    var marker: MeshInstance3D = MeshInstance3D.new()
+    marker.name = "%s_%d_%d" % [prefix, cell.x, cell.y]
+    var mesh: CylinderMesh = CylinderMesh.new()
+    mesh.top_radius = radius
+    mesh.bottom_radius = radius
+    mesh.height = 0.06
+    mesh.radial_segments = 6
+    marker.mesh = mesh
+    marker.position = world.tiles[cell]["position"] + Vector3(0.0, 0.18, 0.0)
+    var material: StandardMaterial3D = StandardMaterial3D.new()
+    material.albedo_color = tint
+    material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+    material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+    marker.material_override = material
+    _overlays.add_child(marker)
