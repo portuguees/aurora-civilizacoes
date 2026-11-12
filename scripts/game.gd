@@ -638,6 +638,11 @@ func _refresh_overlays() -> void:
         child.queue_free()
     var city: Dictionary = get_selected_city()
     if city.is_empty():
+        var only_unit: Dictionary = get_active()
+        if not only_unit.is_empty():
+            for step in only_unit.get("route", []):
+                if world.tiles.has(step):
+                    _overlay_hex(step, "Rota", Color(0.19, 0.85, 0.99, 0.55), 0.35)
         return
     var yields: Dictionary = get_city_yields(city)
     for cell in yields["worked"]:
@@ -646,6 +651,11 @@ func _refresh_overlays() -> void:
         for cell in world.tiles:
             if DistrictRules.can_place(placing_district, cell, city, world.tiles, cities, districts):
                 _overlay_hex(cell, "Disponivel", Color(1.0, 0.80, 0.31, 0.61), 0.62)
+    var active: Dictionary = get_active()
+    if not active.is_empty():
+        for step in active.get("route", []):
+            if world.tiles.has(step):
+                _overlay_hex(step, "Rota", Color(0.19, 0.85, 0.99, 0.55), 0.35)
 
 
 func _overlay_hex(cell: Vector2i, prefix: String, tint: Color, radius: float) -> void:
@@ -657,7 +667,7 @@ func _overlay_hex(cell: Vector2i, prefix: String, tint: Color, radius: float) ->
     mesh.height = 0.06
     mesh.radial_segments = 6
     marker.mesh = mesh
-    marker.position = world.tiles[cell]["position"] + Vector3(0.0, 0.18, 0.0)
+    marker.position = world.tiles[cell]["position"] + Vector3(0.0, 0.28, 0.0)
     var material: StandardMaterial3D = StandardMaterial3D.new()
     material.albedo_color = tint
     material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
