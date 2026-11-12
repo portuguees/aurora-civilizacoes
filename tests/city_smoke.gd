@@ -89,5 +89,28 @@ func _run() -> void:
     if game.city_count(1) != 1:
         _fail("M2: a civilização rival deixou de fundar cidade")
         return
-    print("M2_SMOKE_OK: cidade, cidadãos, academia em hexágono, produção por turnos, +ciência, modelo 3D")
+    var previous_turn: int = game.turns
+    var previous_population: int = int(city["population"])
+    var previous_science: int = int(game.accumulated_science)
+    if not game.save_game():
+        _fail("M2: não foi possível guardar a campanha")
+        return
+    game._new_session()
+    if not game.load_game():
+        _fail("M2: não foi possível restaurar a campanha")
+        return
+    if game.turns != previous_turn or int(game.accumulated_science) != previous_science:
+        _fail("M2: restauro alterou turno ou ciência")
+        return
+    if game.city_count() != 1 or int(game.get_selected_city()["population"]) != previous_population:
+        _fail("M2: restauro alterou população ou cidades")
+        return
+    if game.districts.size() != 1 or str(game.districts[0]["kind"]) != "campus":
+        _fail("M2: restauro perdeu o distrito")
+        return
+    await process_frame
+    if game.get_node_or_null(node_path) == null:
+        _fail("M2: restauro não recriou o modelo 3D da academia")
+        return
+    print("M2_SMOKE_OK: parcelas, academia em hexágono, produção, ciência, modelos 3D, guardar e restaurar")
     quit(0)
