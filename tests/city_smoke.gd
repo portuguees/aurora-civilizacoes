@@ -46,6 +46,14 @@ func _run() -> void:
     if not game.choose_district("campus"):
         _fail("M2: interface não permite escolher a academia")
         return
+    var overlays: Node = game.get_node_or_null("MarcadoresDeTerreno")
+    if overlays == null or overlays.get_child_count() < 2:
+        _fail("M2: locais de distrito e terrenos trabalhados não têm marcadores")
+        return
+    var gold_marker: Node = overlays.get_node_or_null("Disponivel_%d_%d" % [site.x, site.y])
+    if gold_marker == null:
+        _fail("M2: hexágono válido da academia não está marcado a dourado")
+        return
     if not game.confirm_district(site):
         _fail("M2: colocar academia num hexágono válido falhou")
         return
