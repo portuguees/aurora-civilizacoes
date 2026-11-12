@@ -10,6 +10,9 @@ const DistrictVisuals = preload("res://scripts/district_visuals.gd")
 const CityVisuals = preload("res://scripts/city_visuals.gd")
 const UnitVisuals = preload("res://scripts/unit_visuals.gd")
 const TerritoryVisuals = preload("res://scripts/territory_visuals.gd")
+const HexNavigation = preload("res://scripts/hex_navigation.gd")
+const MilitarySystem = preload("res://scripts/military_system.gd")
+const ExplorationVisuals = preload("res://scripts/exploration_visuals.gd")
 
 const PLAYER: int = 0
 const RIVAL: int = 1
@@ -23,12 +26,17 @@ var districts: Array[Dictionary] = []
 var placing_district: String = ""
 var treasury: int = 90
 var accumulated_science: int = 0
+var last_event: String = "Explora o mundo e funda a capital."
+var explored: Dictionary = {}
+var visible_hexes: Dictionary = {}
 var active_unit_id: int = -1
 var selected_city_id: int = -1
 var _id_counter: int = 1
 var _models: Node3D
 var _overlays: Node3D
 var _infrastructure: Node3D
+var _fog: Node3D
+var _old_unit_positions: Dictionary = {}
 
 
 func _ready() -> void:
@@ -42,6 +50,9 @@ func _ready() -> void:
     _infrastructure = Node3D.new()
     _infrastructure.name = "EstradasEFronteiras"
     add_child(_infrastructure)
+    _fog = Node3D.new()
+    _fog.name = "NevoeiroDaExploracao"
+    add_child(_fog)
     world.map_ready.connect(_new_session)
     world.hex_selected.connect(_on_hex_selected)
 
@@ -50,7 +61,10 @@ func _new_session() -> void:
     units.clear()
     cities.clear()
     districts.clear()
+    explored.clear()
+    visible_hexes.clear()
     placing_district = ""
+    last_event = "Nova expedição: escolhe onde fundar a capital."
     treasury = 90
     accumulated_science = 0
     turns = 1
@@ -123,7 +137,10 @@ func _spawn_unit(owner: int, kind: String, cell: Vector2i) -> void:
         "kind": kind,
         "coords": cell,
         "moved": false,
-        "health": 100
+        "health": 100,
+        "move_points": HexNavigation.movement_capacity(kind),
+        "route": [],
+        "target_enemy": -1
     })
     _id_counter += 1
 
@@ -199,6 +216,7 @@ func found_city() -> void:
     _id_counter += 1
     units.erase(unit)
     active_unit_id = -1
+    last_event = "Capital fundada. Agora podes produzir e explorar."
     _draw_models()
     state_changed.emit()
 
@@ -242,6 +260,7 @@ func queue_warrior() -> void:
     city["site"] = Vector2i(-1, -1)
     city["progress"] = 0
     selected_city_id = int(city["id"])
+    last_event = "Produção de guerreiros iniciada."
     state_changed.emit()
 
 
@@ -308,8 +327,7 @@ func _finish_project(city: Dictionary) -> void:
 
 func end_turn() -> void:
     turns += 1
-    for unit in units:
-        unit["moved"] = false
+    MilitarySystem.begin_new_turn(self)
     for city in cities:
         var yields: Dictionary = get_city_yields(city)
         city["production"] = int(yields["production"])
@@ -339,6 +357,7 @@ func end_turn() -> void:
                 _id_counter += 1
                 units.erase(unit)
                 break
+    MilitarySystem.rival_turn(self)
     _draw_models()
     state_changed.emit()
 
@@ -385,28 +404,27 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _move_selected(target: Vector2i) -> void:
-    if not world.tiles.has(target) or bool(world.tiles[target]["water"]):
-        return
-    var active: Dictionary = get_active()
-    if active.is_empty() or int(active["owner"]) != PLAYER or bool(active["moved"]):
-        return
-    if _hex_distance(active["coords"], target) != 1:
-        return
-    for unit in units:
-        if unit["coords"] == target and int(unit["owner"]) != PLAYER:
-            # Primeiro sistema de combate: ataque adjacente.
-            units.erase(unit)
-            break
-        elif unit["coords"] == target and int(unit["owner"]) == PLAYER:
-            return
-    active["coords"] = target
-    active["moved"] = true
+    issue_order(target)
+
+
+func issue_order(target: Vector2i) -> bool:
+    var accepted: bool = MilitarySystem.issue_order(self, target)
     _draw_models()
     state_changed.emit()
+    return accepted
+
+
+func unit_at(cell: Vector2i) -> Dictionary:
+    return MilitarySystem.unit_on(self, cell)
 
 
 func _draw_models() -> void:
+    _old_unit_positions.clear()
     for child in _models.get_children():
+        if str(child.name).begins_with("Unidade_"):
+            var parts: PackedStringArray = str(child.name).split("_")
+            if parts.size() >= 2:
+                _old_unit_positions[int(parts[1])] = child.position
         _models.remove_child(child)
         child.queue_free()
     for city in cities:
@@ -420,13 +438,21 @@ func _draw_models() -> void:
         _make_unit_model(unit)
     _refresh_infrastructure()
     _refresh_overlays()
+    _refresh_exploration()
 
 
 func _make_unit_model(unit: Dictionary) -> void:
     var model: Node3D = UnitVisuals.make(unit, int(unit["id"]) == active_unit_id)
     model.name = "Unidade_%d_%s" % [int(unit["id"]), str(unit["kind"])]
-    model.position = world.tiles[unit["coords"]]["position"] + Vector3(0.0, 0.30, 0.0)
+    var destination: Vector3 = world.tiles[unit["coords"]]["position"] + Vector3(0.0, 0.30, 0.0)
+    model.position = destination
     _models.add_child(model)
+    if _old_unit_positions.has(int(unit["id"])):
+        var old_position: Vector3 = _old_unit_positions[int(unit["id"])]
+        if old_position.distance_to(destination) > 0.05 and old_position.distance_to(destination) < 14.0:
+            model.position = old_position
+            var tween: Tween = create_tween()
+            tween.tween_property(model, "position", destination, 0.27).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 
 func _make_city_model(city: Dictionary) -> void:
