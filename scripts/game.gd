@@ -392,6 +392,7 @@ func _move_selected(target: Vector2i) -> void:
 
 func _draw_models() -> void:
     for child in _models.get_children():
+        _models.remove_child(child)
         child.queue_free()
     for city in cities:
         _make_city_model(city)
