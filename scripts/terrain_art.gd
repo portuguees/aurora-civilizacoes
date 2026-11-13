@@ -70,11 +70,11 @@ static func decorate(root: Node3D, tiles: Dictionary, seed_value: int) -> void:
 
     _batch(root, "Troncos", _cylinder(0.075, 0.10, 0.86, 7), trunks, Color("#5f4936"))
     _batch(root, "PinheirosBase", _cylinder(0.0, 0.51, 0.80, 7), pine_low, Color("#2e6a58"))
-    _batch(root, "PinheirosTopo", _cylinder(0.0, 0.34, 0.68, 7), pine_high, Color("#43846a"))
-    _batch(root, "ArvoresFolhosas", _sphere(0.53, 0.72, 9), leafy, Color("#588c65"))
-    _batch(root, "VegetacaoRasteira", _sphere(0.22, 0.19, 6), shrubs, Color("#8fa46e"))
+    _batch(root, "PinheirosTopo", _cylinder(0.0, 0.34, 0.68, 7), pine_high, Color("#39755f"))
+    _batch(root, "ArvoresFolhosas", _sphere(0.53, 0.72, 9), leafy, Color("#507c62"))
+    _batch(root, "VegetacaoRasteira", _sphere(0.22, 0.19, 6), shrubs, Color("#899c6e"))
     _batch(root, "PedrasDeMontanha", _sphere(0.42, 0.34, 7), stones, Color("#777d76"))
-    _batch(root, "FloresSilvestres", _sphere(0.075, 0.09, 6), wildflowers, Color("#dbb575"))
+    _batch(root, "FloresSilvestres", _sphere(0.075, 0.09, 6), wildflowers, Color("#d2b075"))
     _batch(root, "ReflexosNoMar", _reflection_mesh(), foam, Color("#83c9c8"), true)
 
 
