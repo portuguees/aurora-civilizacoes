@@ -43,17 +43,24 @@ func _run() -> void:
         print("M4_GLB_MODEL_OK: ", path, " | meshes=", meshes.size(), " armature=", armature.name, " animacoes=", anims)
         root.remove_child(scene)
         scene.queue_free()
+    print("M4_DEBUG: GLB isolados aprovados. A carregar World.tscn...")
     var world_scene: PackedScene = load("res://scenes/World.tscn")
     if world_scene == null:
         _fail("O mapa não carregou com os GLB")
         return
+    print("M4_DEBUG: World.tscn carregada; a instanciar...")
     var world: Node = world_scene.instantiate()
+    print("M4_DEBUG: cena instanciada; a adicionar à árvore...")
     root.add_child(world)
+    print("M4_DEBUG: mundo adicionado")
+    print("M4_DEBUG: aguardando próximo frame")
     await process_frame
+    print("M4_DEBUG: frame recebido")
     var game: Node = world.get_node_or_null("Game")
     if game == null:
         _fail("O núcleo da partida não iniciou")
         return
+    print("M4_DEBUG: núcleo carregado, unidades=", game.unit_count())
     var warrior: Node = game.get_node_or_null("ModelosDeJogo/Unidade_2_warrior")
     var settler: Node = game.get_node_or_null("ModelosDeJogo/Unidade_1_settler")
     if warrior == null or settler == null:
