@@ -100,6 +100,7 @@ static func attack(game: Node, attacker: Dictionary, defender: Dictionary) -> bo
     var terrain: String = str(game.world.tiles[defender["coords"]]["biome"])
     var defensive_bonus: int = 7 if terrain in ["hills", "forest"] else 0
     var strength: int = 38 if str(defender["kind"]) == "settler" else 32
+    strength += int(game.call("technology_attack_bonus", int(attacker["owner"])))
     var damage: int = maxi(12, strength - defensive_bonus)
     defender["health"] = int(defender["health"]) - damage
     game.call("record_combat", int(attacker["id"]), defender["coords"], damage, int(defender["health"]) <= 0)
