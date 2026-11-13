@@ -226,6 +226,8 @@ func has_starting_units() -> bool:
 
 
 func can_found() -> bool:
+    if game_over:
+        return false
     var unit: Dictionary = get_active()
     if unit.is_empty() or str(unit["kind"]) != "settler" or int(unit["owner"]) != PLAYER:
         return false
@@ -484,7 +486,7 @@ func available_technologies() -> Array[String]:
 
 
 func choose_technology(key: String) -> bool:
-    if not TechnologyRules.can_start(key, researched):
+    if game_over or not TechnologyRules.can_start(key, researched):
         return false
     current_technology = key
     last_event = "Investigação selecionada: %s." % TechnologyRules.title(key)
@@ -520,6 +522,8 @@ func _add_research(science_income: int) -> void:
 
 
 func queue_warrior() -> void:
+    if game_over:
+        return
     var city: Dictionary = get_selected_city()
     if city.is_empty():
         for candidate in cities:
@@ -537,6 +541,8 @@ func queue_warrior() -> void:
 
 
 func choose_district(kind: String) -> bool:
+    if game_over:
+        return false
     var city: Dictionary = get_selected_city()
     if city.is_empty() or str(city.get("project", "")) != "" or not DistrictRules.COSTS.has(kind) or kind == "warrior":
         return false
@@ -558,6 +564,8 @@ func cancel_placement() -> void:
 
 
 func confirm_district(cell: Vector2i) -> bool:
+    if game_over:
+        return false
     var city: Dictionary = get_selected_city()
     if city.is_empty() or placing_district == "" or str(city.get("project", "")) != "":
         return false
@@ -573,6 +581,8 @@ func confirm_district(cell: Vector2i) -> bool:
 
 
 func set_city_focus(mode: String) -> void:
+    if game_over:
+        return
     var city: Dictionary = get_selected_city()
     if city.is_empty() or mode not in ["balanced", "food", "production"]:
         return
@@ -689,6 +699,8 @@ func _move_selected(target: Vector2i) -> void:
 
 
 func issue_order(target: Vector2i) -> bool:
+    if game_over:
+        return false
     var accepted: bool = MilitarySystem.issue_order(self, target)
     _draw_models()
     state_changed.emit()
