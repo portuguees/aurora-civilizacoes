@@ -91,6 +91,10 @@ func _run() -> void:
         _fail("Paz ou caravana perderam-se na gravação")
         return
     warrior = game.get_active()
+    for unit in game.units:
+        if int(unit["id"]) == int(rival["id"]):
+            rival = unit
+            break
     if not game.declare_war() or game.is_at_peace() or int(game.diplomacy["trade_turns"]) != 0:
         _fail("Declaração de guerra não terminou os acordos")
         return
