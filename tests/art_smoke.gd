@@ -1,4 +1,5 @@
 extends SceneTree
+const DistrictVisuals = preload("res://scripts/district_visuals.gd")
 ## Smoke M3.5: os novos detalhes visuais existem como nós 3D reais.
 
 
@@ -73,7 +74,7 @@ func _run() -> void:
         return
 
     # Validar a presença do letreiro de distrito sem duplicar os testes económicos.
-    var district_model: Node3D = load("res://scripts/district_visuals.gd").make("campus")
+    var district_model: Node3D = DistrictVisuals.make("campus")
     root.add_child(district_model)
     if district_model.get_node_or_null("NomeDistrito") == null:
         _fail("Os novos letreiros 3D dos distritos estão ausentes")
