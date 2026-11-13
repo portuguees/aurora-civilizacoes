@@ -102,6 +102,7 @@ static func attack(game: Node, attacker: Dictionary, defender: Dictionary) -> bo
     var strength: int = 38 if str(defender["kind"]) == "settler" else 32
     var damage: int = maxi(12, strength - defensive_bonus)
     defender["health"] = int(defender["health"]) - damage
+    game.call("record_combat", int(attacker["id"]), defender["coords"], damage, int(defender["health"]) <= 0)
     attacker["move_points"] = 0
     attacker["moved"] = true
     attacker["route"] = []
