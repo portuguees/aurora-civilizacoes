@@ -122,7 +122,7 @@ func _capture() -> void:
     if frame.save_png(output) != OK:
         _fail("VISUAL: não foi possível escrever a captura PNG")
         return
-        var ui: CanvasLayer = world.get_node("GameUI")
+    var ui: CanvasLayer = world.get_node("GameUI")
     ui.call("_open_research")
     await process_frame
     RenderingServer.force_draw()
