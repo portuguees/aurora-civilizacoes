@@ -19,6 +19,10 @@ const TechnologyRules = preload("res://scripts/technology_rules.gd")
 const CivicRules = preload("res://scripts/civic_rules.gd")
 const DiplomacyRules = preload("res://scripts/diplomacy_rules.gd")
 const VictoryRules = preload("res://scripts/victory_rules.gd")
+const PolicyRules = preload("res://scripts/policy_rules.gd")
+const WonderRules = preload("res://scripts/wonder_rules.gd")
+const WonderVisuals = preload("res://scripts/wonder_visuals.gd")
+const RivalAIRules = preload("res://scripts/rival_ai_rules.gd")
 
 const PLAYER: int = 0
 const RIVAL: int = 1
@@ -29,6 +33,8 @@ var turns: int = 1
 var units: Array[Dictionary] = []
 var cities: Array[Dictionary] = []
 var districts: Array[Dictionary] = []
+var wonders: Array[Dictionary] = []
+var active_policy: String = ""
 var placing_district: String = ""
 var treasury: int = 90
 var accumulated_science: int = 0
@@ -87,6 +93,8 @@ func _new_session() -> void:
     _combat_marks.clear()
     cities.clear()
     districts.clear()
+    wonders.clear()
+    active_policy = ""
     explored.clear()
     visible_hexes.clear()
     placing_district = ""
@@ -304,7 +312,39 @@ func get_city_yields(city: Dictionary) -> Dictionary:
     yields["culture"] = 1 + int(city["population"])
     if int(city["owner"]) == PLAYER:
         CivicRules.apply_yields(yields, civics_completed, government)
+        PolicyRules.apply(yields, active_policy)
+    for wonder in wonders:
+        if int(wonder["city_id"]) == int(city["id"]):
+            WonderRules.bonus(wonder, yields)
     return yields
+
+
+func choose_policy(key: String) -> bool:
+    if game_over or not PolicyRules.unlocked(key, civics_completed):
+        return false
+    active_policy = key
+    last_event = "Política ativa: %s." % (
+        str(PolicyRules.POLICIES[key]["name"]) if key != "" else "Nenhuma"
+    )
+    state_changed.emit()
+    return true
+
+
+func queue_wonder(kind: String) -> bool:
+    if game_over or not WonderRules.can_build(kind, researched, wonders):
+        return false
+    for city in cities:
+        if str(city.get("project", "")) == kind:
+            return false
+    var city: Dictionary = get_selected_city()
+    if city.is_empty() or int(city["owner"]) != PLAYER or str(city.get("project", "")) != "":
+        return false
+    city["project"] = kind
+    city["site"] = Vector2i(-1, -1)
+    city["progress"] = 0
+    last_event = "Maravilha iniciada: %s." % str(WonderRules.WONDERS[kind]["name"])
+    state_changed.emit()
+    return true
 
 
 func choose_civic(key: String) -> bool:
@@ -447,40 +487,16 @@ func _rival_planning() -> void:
     for city in cities:
         if int(city["owner"]) != RIVAL or str(city.get("project", "")) != "":
             continue
-        var next_kind: String = ""
-        var has_academy: bool = false
-        var has_market: bool = false
-        for district in districts:
-            if int(district["city_id"]) == int(city["id"]):
-                if str(district["kind"]) == "campus":
-                    has_academy = true
-                if str(district["kind"]) == "market":
-                    has_market = true
-        if not has_market:
-            next_kind = "market"
-        elif not has_academy:
-            next_kind = "campus"
-        else:
-            next_kind = "warrior"
-        if next_kind == "warrior":
-            var enemy_warriors: int = 0
-            for unit in units:
-                if int(unit["owner"]) == RIVAL and str(unit["kind"]) == "warrior":
-                    enemy_warriors += 1
-            if enemy_warriors >= 3:
-                rival_goal = "Defender o território"
-                return
-            city["project"] = "warrior"
-            city["progress"] = 0
-            rival_goal = "Treinar guarnição"
-            return
-        for cell in world.tiles:
-            if DistrictRules.can_place(next_kind, cell, city, world.tiles, cities, districts):
-                city["project"] = next_kind
-                city["site"] = cell
-                city["progress"] = 0
-                rival_goal = "Desenvolver %s" % str(DistrictRules.LABELS[next_kind])
-                return
+        var plan: Dictionary = RivalAIRules.choose(self, city)
+        var kind: String = str(plan.get("kind", ""))
+        rival_goal = str(plan.get("goal", "Defender o território"))
+        if kind == "":
+            continue
+        if not DistrictRules.COSTS.has(kind):
+            continue
+        city["project"] = kind
+        city["site"] = plan.get("site", Vector2i(-1, -1))
+        city["progress"] = 0
 
 
 func available_technologies() -> Array[String]:
@@ -497,9 +513,10 @@ func choose_technology(key: String) -> bool:
 
 
 func technology_attack_bonus(owner: int) -> int:
-    if owner == PLAYER and researched.has("metallurgy"):
-        return 8
-    return 0
+    var bonus: int = 8 if owner == PLAYER and researched.has("metallurgy") else 0
+    if owner == PLAYER:
+        bonus += PolicyRules.attack_bonus(active_policy)
+    return bonus
 
 
 func research_status() -> Dictionary:
@@ -647,7 +664,19 @@ func set_city_focus(mode: String) -> void:
 func _finish_project(city: Dictionary) -> void:
     var kind: String = str(city["project"])
     var site: Vector2i = city.get("site", Vector2i(-1, -1))
-    if kind in ["warrior", "builder", "archer"]:
+    if kind in WonderRules.WONDERS:
+        var already_exists: bool = false
+        for wonder in wonders:
+            if str(wonder["kind"]) == kind:
+                already_exists = true
+        if not already_exists:
+            wonders.append({
+                "id": _id_counter, "owner": int(city["owner"]),
+                "city_id": int(city["id"]), "kind": kind, "coords": city["coords"]
+            })
+            _id_counter += 1
+            last_event = "Maravilha concluída: %s!" % str(WonderRules.WONDERS[kind]["name"])
+    elif kind in ["warrior", "builder", "archer"]:
         var spawn_cell: Vector2i = city["coords"]
         if not unit_at(spawn_cell).is_empty():
             for candidate in _neighbors(spawn_cell):
@@ -795,6 +824,13 @@ func _draw_models() -> void:
         built_model.name = "Distrito_%d_%s" % [int(district["id"]), str(district["kind"])]
         built_model.position = world.tiles[district["coords"]]["position"]
         _models.add_child(built_model)
+    for wonder in wonders:
+        if int(wonder["owner"]) != PLAYER and not visible_hexes.has(wonder["coords"]):
+            continue
+        var visual: Node3D = WonderVisuals.make(str(wonder["kind"]))
+        visual.name = "Maravilha_%d_%s" % [int(wonder["id"]), str(wonder["kind"])]
+        visual.position = world.tiles[wonder["coords"]]["position"] + Vector3(0.92, 0.0, 0.65)
+        _models.add_child(visual)
     for city in cities:
         var project: String = str(city.get("project", ""))
         var site: Vector2i = city.get("site", Vector2i(-1, -1))
@@ -961,7 +997,9 @@ func save_game() -> bool:
         "selected_city": selected_city_id,
         "units": _encode_entries(units),
         "cities": _encode_entries(cities),
-        "districts": _encode_entries(districts)
+        "districts": _encode_entries(districts),
+        "wonders": _encode_entries(wonders),
+        "active_policy": active_policy
     }
     file.store_string(JSON.stringify(data))
     file.close()
@@ -993,6 +1031,8 @@ func load_game() -> bool:
     units = _decode_entries(data["units"])
     cities = _decode_entries(data["cities"])
     districts = _decode_entries(data["districts"])
+    wonders = _decode_entries(data.get("wonders", []))
+    active_policy = str(data.get("active_policy", ""))
     turns = maxi(1, int(data.get("turns", 1)))
     treasury = int(data.get("treasury", 90))
     accumulated_science = int(data.get("science", 0))
@@ -1028,6 +1068,8 @@ func load_game() -> bool:
     government = str(data.get("government", "chiefdom"))
     if not CivicRules.government_unlocked(government, civics_completed):
         government = "chiefdom"
+    if not PolicyRules.unlocked(active_policy, civics_completed):
+        active_policy = ""
     diplomacy = DiplomacyRules.initial_state()
     var old_diplomacy: Variant = data.get("diplomacy", {})
     if old_diplomacy is Dictionary:
