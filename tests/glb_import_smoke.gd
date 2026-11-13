@@ -1,5 +1,5 @@
 extends SceneTree
-## Contrato dos modelos GLB originais importados. Sem dependência da cena do jogo.
+## Contrato de GLB original com rig articulado e dois clips. Sem dependência da cena do jogo.
 
 
 func _initialize() -> void:
@@ -24,13 +24,14 @@ func _run() -> void:
         var scene: Node = (asset as PackedScene).instantiate()
         root.add_child(scene)
         var players: Array[Node] = scene.find_children("*", "AnimationPlayer", true, false)
-        var skeletons: Array[Node] = scene.find_children("*", "Skeleton3D", true, false)
+        var armature: Node = scene.find_child("Armature", true, false)
+        var left_arm: Node = scene.find_child("Arm_L", true, false)
         var meshes: Array[Node] = scene.find_children("*", "MeshInstance3D", true, false)
         if meshes.is_empty():
             _fail("Ficheiro importado sem modelo 3D: " + path)
             return
-        if skeletons.is_empty():
-            _fail("Ficheiro importado sem Skeleton3D: " + path)
+        if armature == null or left_arm == null:
+            _fail("Ficheiro importado sem articulações Armature/Arm_L: " + path)
             return
         if players.is_empty():
             _fail("Ficheiro importado sem AnimationPlayer: " + path)
@@ -39,8 +40,8 @@ func _run() -> void:
         if anims.size() < 2:
             _fail("Faltam as duas animações Walk / Idle: " + path + " -> " + str(anims))
             return
-        print("M4_GLB_MODEL_OK: ", path, " | meshes=", meshes.size(), " bones=", (skeletons[0] as Skeleton3D).get_bone_count(), " animacoes=", anims)
+        print("M4_GLB_MODEL_OK: ", path, " | meshes=", meshes.size(), " armature=", armature.name, " animacoes=", anims)
         root.remove_child(scene)
         scene.queue_free()
-    print("M4_GLB_OK: modelos GLB, esqueletos e clips de animação importados no Godot")
+    print("M4_GLB_OK: modelos GLB, articulações e clips de animação importados no Godot")
     quit(0)
