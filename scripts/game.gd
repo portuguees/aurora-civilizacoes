@@ -180,7 +180,9 @@ func _spawn_unit(owner: int, kind: String, cell: Vector2i) -> void:
         "health": 100,
         "move_points": HexNavigation.movement_capacity(kind),
         "route": [],
-        "target_enemy": -1
+        "target_enemy": -1,
+        "charges": 2 if kind == "builder" else 0,
+        "experience": 0
     })
     _id_counter += 1
 
@@ -522,8 +524,16 @@ func _add_research(science_income: int) -> void:
 
 
 func queue_warrior() -> void:
-    if game_over:
-        return
+    queue_unit("warrior")
+
+
+func queue_unit(kind: String) -> bool:
+    if game_over or kind not in ["warrior", "builder", "archer"]:
+        return false
+    if kind == "archer" and not researched.has("metallurgy"):
+        last_event = "Arqueiros requerem Metalurgia."
+        state_changed.emit()
+        return false
     var city: Dictionary = get_selected_city()
     if city.is_empty():
         for candidate in cities:
@@ -531,13 +541,56 @@ func queue_warrior() -> void:
                 city = candidate
                 break
     if city.is_empty() or str(city.get("project", "")) != "":
-        return
-    city["project"] = "warrior"
+        return false
+    city["project"] = kind
     city["site"] = Vector2i(-1, -1)
     city["progress"] = 0
     selected_city_id = int(city["id"])
-    last_event = "Produção de guerreiros iniciada."
+    last_event = "Produção de %s iniciada." % str(DistrictRules.LABELS[kind])
     state_changed.emit()
+    return true
+
+
+func builder_can_improve(kind: String) -> bool:
+    if game_over or kind not in ["farm", "mine"]:
+        return false
+    var builder: Dictionary = get_active()
+    if builder.is_empty() or str(builder["kind"]) != "builder" or int(builder["owner"]) != PLAYER:
+        return false
+    if int(builder.get("charges", 0)) <= 0 or int(builder.get("move_points", 0)) <= 0:
+        return false
+    var site: Vector2i = builder["coords"]
+    for city in cities:
+        if int(city["owner"]) == PLAYER and DistrictRules.can_place(kind, site, city, world.tiles, cities, districts):
+            return true
+    return false
+
+
+func builder_improve(kind: String) -> bool:
+    if not builder_can_improve(kind):
+        return false
+    var builder: Dictionary = get_active()
+    for city in cities:
+        if int(city["owner"]) != PLAYER or not DistrictRules.can_place(kind, builder["coords"], city, world.tiles, cities, districts):
+            continue
+        districts.append({
+            "id": _id_counter, "owner": PLAYER,
+            "city_id": int(city["id"]), "kind": kind, "coords": builder["coords"]
+        })
+        _id_counter += 1
+        builder["charges"] = int(builder["charges"]) - 1
+        builder["move_points"] = 0
+        builder["route"] = []
+        if int(builder["charges"]) <= 0:
+            units.erase(builder)
+            active_unit_id = -1
+        last_event = "Construtor concluiu %s. Cargas restantes: %d." % [
+            str(DistrictRules.LABELS[kind]), maxi(0, int(builder["charges"]))
+        ]
+        _draw_models()
+        state_changed.emit()
+        return true
+    return false
 
 
 func choose_district(kind: String) -> bool:
@@ -594,8 +647,19 @@ func set_city_focus(mode: String) -> void:
 func _finish_project(city: Dictionary) -> void:
     var kind: String = str(city["project"])
     var site: Vector2i = city.get("site", Vector2i(-1, -1))
-    if kind == "warrior":
-        _spawn_unit(int(city["owner"]), "warrior", city["coords"])
+    if kind in ["warrior", "builder", "archer"]:
+        var spawn_cell: Vector2i = city["coords"]
+        if not unit_at(spawn_cell).is_empty():
+            for candidate in _neighbors(spawn_cell):
+                if world.tiles.has(candidate) and HexNavigation.movement_cost(world.tiles[candidate]) > 0:
+                    if unit_at(candidate).is_empty():
+                        spawn_cell = candidate
+                        break
+        if unit_at(spawn_cell).is_empty():
+            _spawn_unit(int(city["owner"]), kind, spawn_cell)
+        else:
+            city["progress"] = maxi(0, int(DistrictRules.COSTS[kind]) - 1)
+            return
     elif kind != "" and world.tiles.has(site):
         districts.append({
             "id": _id_counter, "owner": int(city["owner"]),
@@ -734,7 +798,7 @@ func _draw_models() -> void:
     for city in cities:
         var project: String = str(city.get("project", ""))
         var site: Vector2i = city.get("site", Vector2i(-1, -1))
-        if project in ["", "warrior"] or not world.tiles.has(site):
+        if project in ["", "warrior", "builder", "archer"] or not world.tiles.has(site):
             continue
         if int(city["owner"]) != PLAYER and not visible_hexes.has(site):
             continue
@@ -1046,6 +1110,8 @@ func _decode_entries(entries: Array) -> Array[Dictionary]:
         if item.has("kind"):
             item["move_points"] = int(item.get("move_points", HexNavigation.movement_capacity(str(item["kind"]))))
             item["target_enemy"] = int(item.get("target_enemy", -1))
+            item["charges"] = int(item.get("charges", 2 if str(item["kind"]) == "builder" else 0))
+            item["experience"] = int(item.get("experience", 0))
         decoded.append(item)
     return decoded
 
