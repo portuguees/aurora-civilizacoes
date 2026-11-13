@@ -24,8 +24,8 @@ func _run() -> void:
         _fail("Política Colheitas recusada")
         return
     var agrarian: Dictionary = game.get_city_yields(city)
-    if int(agrarian["food_surplus"]) != int(normal["food_surplus"]) + 2:
-        _fail("Colheitas não acrescentou alimento (+1 político e +1 tradição)")
+    if int(agrarian["food_surplus"]) != int(normal["food_surplus"]) + 1:
+        _fail("Colheitas não acrescentou alimento (+1 político)")
         return
     game.civics_completed.append("common_law")
     if not game.choose_policy("administration"):
