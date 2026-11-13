@@ -56,6 +56,12 @@ jobs:
           set -o pipefail
           godot --headless --path . --script res://tests/art_smoke.gd 2>&1 | tee godot-m35.log
           grep -q "M35_SMOKE_OK" godot-m35.log
+      - name: Importar modelos GLB e validar animações M4
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . --script res://tests/glb_import_smoke.gd 2>&1 | tee godot-m4-glb.log
+          grep -q "M4_GLB_OK" godot-m4-glb.log
       - name: Captura real com Godot e X virtual
         shell: bash
         run: |
@@ -75,6 +81,7 @@ jobs:
             godot-m2.log
             godot-m3.log
             godot-m35.log
+            godot-m4-glb.log
             godot-visual.log
             visual-m35.png
           if-no-files-found: ignore
