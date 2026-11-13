@@ -60,7 +60,7 @@ func _run() -> void:
         _fail("Os modelos das unidades desapareceram do turno inicial")
         return
     if not warrior.has_method("get_imported_animator_count") or int(warrior.call("get_imported_animator_count")) != 4:
-        _fail("A formação guerreira não tem quatro animadores GLB")
+        _fail("A formação guerreira não tem quatro animadores GLB: preparados=" + str(warrior.call("get_imported_animator_count")) + " em arvore=" + str(warrior.find_children("*", "AnimationPlayer", true, false).size()) + " soldados=" + str(warrior.get_children().size()))
         return
     if not settler.has_method("get_imported_animator_count") or int(settler.call("get_imported_animator_count")) != 2:
         _fail("O colono não tem dois personagens GLB animados")
