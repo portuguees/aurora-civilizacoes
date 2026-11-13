@@ -21,7 +21,7 @@ static func tile_yields(tile: Dictionary) -> Dictionary:
         "grassland":
             result = {"food": 2, "production": 1}
         "plains":
-            return {"food": 2, "production": 1}
+            result = {"food": 2, "production": 1}
         "forest":
             result = {"food": 1, "production": 2}
         "hills":
