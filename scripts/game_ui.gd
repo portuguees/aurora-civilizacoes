@@ -145,8 +145,8 @@ func _build_research_ui(root: Control) -> void:
     sheet.anchor_bottom = 0.5
     sheet.offset_left = -310.0
     sheet.offset_right = 310.0
-    sheet.offset_top = -264.0
-    sheet.offset_bottom = 264.0
+    sheet.offset_top = -219.0
+    sheet.offset_bottom = 219.0
     _research_overlay.add_child(sheet)
     var column: VBoxContainer = VBoxContainer.new()
     column.add_theme_constant_override("separation", 8)
@@ -163,7 +163,13 @@ func _build_research_ui(root: Control) -> void:
         btn.custom_minimum_size.x = 230
         row.add_child(btn)
         _research_buttons[key] = btn
-        var detail: Label = _label(str(info["description"]), 12, Color("#d9e6da"))
+        var requirements: PackedStringArray = PackedStringArray()
+        for prerequisite in info["requires"]:
+            requirements.append(TechnologyRules.title(str(prerequisite)))
+        var detail_text: String = str(info["description"])
+        if not requirements.is_empty():
+            detail_text += "  |  Requer: " + ", ".join(requirements)
+        var detail: Label = _label(detail_text, 12, Color("#d9e6da"))
         detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
         detail.custom_minimum_size.x = 315
         row.add_child(detail)
