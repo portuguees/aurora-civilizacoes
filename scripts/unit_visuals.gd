@@ -1,10 +1,13 @@
 extends RefCounted
+const UnitMotion = preload("res://scripts/unit_motion.gd")
 ## Grupos de unidades geométricas 3D com silhuetas distintas.
 ## Um colono tem carroça e acompanhantes; um guerreiro tem formação com escudos.
 
 
 static func make(unit: Dictionary, selected: bool) -> Node3D:
     var root: Node3D = Node3D.new()
+    root.set_script(UnitMotion)
+    root.set_meta("art_revision", "M35")
     var owner: int = int(unit.get("owner", 0))
     var faction: Color = Color("#39bfe4") if owner == 0 else Color("#dc8e54")
     var kind: String = str(unit.get("kind", "warrior"))
@@ -57,8 +60,8 @@ static func _settlers(root: Node3D, faction: Color) -> void:
             item.rotation_degrees.z = 90.0
             item.material_override = _material(Color("#423729"))
             root.add_child(item)
-    _person(root, Vector3(-0.23, 0.0, -0.62), faction, false)
-    _person(root, Vector3(0.27, 0.0, -0.63), Color("#c2b09b"), false)
+    _animated_person(root, 0, Vector3(-0.23, 0.0, -0.62), faction, false)
+    _animated_person(root, 1, Vector3(0.27, 0.0, -0.63), Color("#c2b09b"), false)
     _flag(root, Vector3(0.47, 0.0, 0.40), faction)
 
 
@@ -67,9 +70,17 @@ static func _warriors(root: Node3D, faction: Color) -> void:
         Vector3(-0.34, 0.0, -0.32), Vector3(0.34, 0.0, -0.32),
         Vector3(-0.34, 0.0, 0.32), Vector3(0.34, 0.0, 0.32)
     ]
-    for point in positions:
-        _person(root, point, faction, true)
+    for i in range(positions.size()):
+        _animated_person(root, i, positions[i], faction, true)
     _flag(root, Vector3(0.63, 0.0, 0.0), faction)
+
+
+static func _animated_person(root: Node3D, index: int, where: Vector3, color: Color, armed: bool) -> void:
+    var actor: Node3D = Node3D.new()
+    actor.name = "Soldado_%d" % index
+    actor.position = where
+    root.add_child(actor)
+    _person(actor, Vector3.ZERO, color, armed)
 
 
 static func _person(parent: Node3D, base: Vector3, faction: Color, armed: bool) -> void:
@@ -93,16 +104,27 @@ static func _person(parent: Node3D, base: Vector3, faction: Color, armed: bool) 
     face.position = base + Vector3(0.0, 0.88, 0.0)
     face.material_override = _material(Color("#e7c69d"))
     parent.add_child(face)
+    # Pernas e braços tornam as figuras reconhecíveis ao ampliar a câmara.
+    for side in [-1.0, 1.0]:
+        _cylinder(parent, base + Vector3(0.083 * side, 0.18, 0.0), 0.048, 0.31, Color("#51483b"), 6)
+        _cylinder(parent, base + Vector3(0.20 * side, 0.50, 0.0), 0.050, 0.37, Color("#d1b48e"), 6)
     if armed:
         _cylinder(parent, base + Vector3(0.0, 1.01, 0.0), 0.18, 0.13, Color("#647c83"), 8)
         _box(parent, base + Vector3(-0.21, 0.49, 0.13), Vector3(0.12, 0.37, 0.29), Color("#cbb489"))
         _cylinder(parent, base + Vector3(0.23, 0.81, 0.0), 0.022, 1.22, Color("#74573e"), 6)
         _cone(parent, base + Vector3(0.23, 1.47, 0.0), 0.07, 0.20, Color("#c6cfcd"), 6)
+    else:
+        _box(parent, base + Vector3(0.0, 0.48, 0.18), Vector3(0.24, 0.29, 0.12), Color("#9d784e"))
 
 
 static func _flag(root: Node3D, offset: Vector3, tint: Color) -> void:
-    _cylinder(root, offset + Vector3(0.0, 0.85, 0.0), 0.035, 1.65, Color("#69513b"), 6)
-    _box(root, offset + Vector3(0.24, 1.43, 0.0), Vector3(0.52, 0.30, 0.06), tint)
+    var banner: Node3D = Node3D.new()
+    banner.name = "Estandarte"
+    banner.position = offset
+    root.add_child(banner)
+    _cylinder(banner, Vector3(0.0, 0.85, 0.0), 0.035, 1.65, Color("#69513b"), 6)
+    _box(banner, Vector3(0.24, 1.43, 0.0), Vector3(0.52, 0.30, 0.06), tint)
+    _box(banner, Vector3(0.24, 1.44, 0.038), Vector3(0.31, 0.06, 0.01), Color("#f2dfb6"))
 
 
 static func _material(tint: Color, unshaded: bool = false) -> StandardMaterial3D:
