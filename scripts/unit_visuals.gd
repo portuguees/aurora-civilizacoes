@@ -17,11 +17,16 @@ static func make(unit: Dictionary, selected: bool) -> Node3D:
     _cylinder(root, Vector3(0.0, 0.04, 0.0), 0.78, 0.11, Color("#243c3f"), 12)
     if kind == "settler":
         _settlers(root, faction)
+    elif kind == "builder":
+        _builders(root, faction)
+    elif kind == "archer":
+        _archers(root, faction)
     else:
         _warriors(root, faction)
     var nameplate: Label3D = Label3D.new()
     nameplate.name = "NomeUnidade"
-    nameplate.text = "COLONO" if kind == "settler" else "GUERREIROS"
+    var names: Dictionary = {"settler": "COLONO", "warrior": "GUERREIROS", "archer": "ARQUEIROS", "builder": "CONSTRUTOR"}
+    nameplate.text = str(names.get(kind, kind.to_upper()))
     nameplate.font_size = 38
     nameplate.pixel_size = 0.0047
     nameplate.outline_size = 9
@@ -75,6 +80,31 @@ static func _warriors(root: Node3D, faction: Color) -> void:
     for i in range(positions.size()):
         _animated_person(root, i, positions[i], faction, true)
     _flag(root, Vector3(0.63, 0.0, 0.0), faction)
+
+
+static func _builders(root: Node3D, faction: Color) -> void:
+    for i in range(2):
+        _animated_person(root, i, Vector3(-0.23 + float(i) * 0.46, 0.0, 0.0), faction, false)
+    _box(root, Vector3(0.0, 0.23, 0.48), Vector3(0.73, 0.22, 0.28), Color("#a98050"))
+    _flag(root, Vector3(0.40, 0.0, 0.45), faction)
+
+
+static func _archers(root: Node3D, faction: Color) -> void:
+    for i in range(3):
+        var p: Vector3 = Vector3(-0.34 + float(i) * 0.34, 0.0, -0.20 if i != 1 else 0.35)
+        _animated_person(root, i, p, faction, true)
+        var bow: MeshInstance3D = MeshInstance3D.new()
+        var mesh: TorusMesh = TorusMesh.new()
+        mesh.inner_radius = 0.22
+        mesh.outer_radius = 0.255
+        mesh.rings = 7
+        mesh.ring_segments = 12
+        bow.mesh = mesh
+        bow.position = p + Vector3(0.25, 0.90, 0.0)
+        bow.rotation_degrees.z = 90
+        bow.material_override = _material(Color("#9b6848"))
+        root.add_child(bow)
+    _flag(root, Vector3(0.62, 0.0, 0.38), faction)
 
 
 static func _animated_person(root: Node3D, index: int, where: Vector3, color: Color, armed: bool) -> void:

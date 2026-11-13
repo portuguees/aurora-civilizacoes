@@ -10,6 +10,11 @@ var _summary: Label
 var _resource: Label
 var _found: Button
 var _warrior: Button
+var _builder_button: Button
+var _archer_button: Button
+var _farm_builder: Button
+var _mine_builder: Button
+var _wonder_buttons: Dictionary = {}
 var _unit: Button
 var _end: Button
 var _project: Label
@@ -55,8 +60,8 @@ func _create_ui() -> void:
     actions.anchor_bottom = 1.0
     actions.offset_left = -440.0
     actions.offset_right = -16.0
-    actions.offset_top = -623.0
-    actions.offset_bottom = -102.0
+    actions.offset_top = -731.0
+    actions.offset_bottom = -67.0
     root.add_child(actions)
 
     var column: VBoxContainer = VBoxContainer.new()
@@ -74,8 +79,22 @@ func _create_ui() -> void:
     column.add_child(_found)
     _unit = _button("PRÓXIMA UNIDADE   [J]", _game.next_player_unit)
     column.add_child(_unit)
-    _warrior = _button("PRODUZIR GUERREIRO", _game.queue_warrior)
-    column.add_child(_warrior)
+    var military_row: HBoxContainer = HBoxContainer.new()
+    military_row.add_theme_constant_override("separation", 5)
+    column.add_child(military_row)
+    _warrior = _button("GUERREIRO", _game.queue_warrior)
+    military_row.add_child(_warrior)
+    _builder_button = _button("CONSTRUTOR", _game.queue_unit.bind("builder"))
+    military_row.add_child(_builder_button)
+    _archer_button = _button("ARQUEIRO", _game.queue_unit.bind("archer"))
+    military_row.add_child(_archer_button)
+    var builder_actions: HBoxContainer = HBoxContainer.new()
+    builder_actions.add_theme_constant_override("separation", 6)
+    column.add_child(builder_actions)
+    _farm_builder = _button("CONSTRUIR QUINTA  [2 CARGAS]", _game.builder_improve.bind("farm"))
+    _mine_builder = _button("EXTRAIR NA MINA", _game.builder_improve.bind("mine"))
+    builder_actions.add_child(_farm_builder)
+    builder_actions.add_child(_mine_builder)
     _project = _label("Nenhum projeto selecionado.", 12, Color("#ecce94"))
     column.add_child(_project)
     var build_label: Label = _label("DISTRITOS E MELHORIAS  ·  CLICAR NO MAPA", 11, Color("#d7b47c"))
@@ -92,6 +111,14 @@ func _create_ui() -> void:
         _district_buttons[kind] = btn
     _placement = _label("Escolhe um distrito e depois um hexágono válido.", 11, Color("#cfdfdc"))
     column.add_child(_placement)
+    var wonder_row: HBoxContainer = HBoxContainer.new()
+    wonder_row.add_theme_constant_override("separation", 6)
+    column.add_child(wonder_row)
+    for kind in ["sky_observatory", "royal_gardens"]:
+        var caption: String = "OBSERVATÓRIO" if kind == "sky_observatory" else "JARDINS REAIS"
+        var button: Button = _button(caption, _game.queue_wonder.bind(kind))
+        wonder_row.add_child(button)
+        _wonder_buttons[kind] = button
     var focus_row: HBoxContainer = HBoxContainer.new()
     column.add_child(focus_row)
     for option in ["balanced", "food", "production"]:
@@ -258,18 +285,20 @@ func _button(text_value: String, callback: Callable) -> Button:
 
 func _refresh() -> void:
     _turn.text = "TURNO %d" % int(_game.turns)
-    _resource.text = "OURO %d  •  CIÊNCIA %d  •  CIDADES %d  •  EXPLORADO %d/%d" % [
-        int(_game.treasury), int(_game.accumulated_science), int(_game.city_count()),
-        int(_game.discovered_count()), int(_game.world.tiles.size())
+    _resource.text = "OURO %d  •  CIÊNCIA %d  •  CULTURA %d  •  CIDADES %d  •  EXPLORADO %d/%d" % [
+        int(_game.treasury), int(_game.accumulated_science), int(_game.accumulated_culture),
+        int(_game.city_count()), int(_game.discovered_count()), int(_game.world.tiles.size())
     ]
     var active: Dictionary = _game.get_active()
     if not active.is_empty():
         _summary.text = "%s  •  PV %d/100  •  Movimento %d/%d  •  Rota %d" % [
-            "COLONO" if str(active["kind"]) == "settler" else "GUERREIROS",
+            {"settler": "COLONO", "builder": "CONSTRUTOR", "archer": "ARQUEIRO", "warrior": "GUERREIROS"}.get(str(active["kind"]), "UNIDADE"),
             int(active.get("health", 100)), int(active.get("move_points", 0)),
             int(_game.HexNavigation.movement_capacity(str(active["kind"]))),
             active.get("route", []).size()
         ]
+        if str(active["kind"]) == "builder":
+            _summary.text += "  •  Cargas %d" % int(active.get("charges", 2))
     elif _game.city_count() > 0:
         _summary.text = "Capital fundada! Escolhe uma produção."
     else:
@@ -295,10 +324,18 @@ func _refresh() -> void:
             button.text = "%s · %d ciência" % [title, TechnologyRules.cost(str(key))]
     _found.disabled = not _game.can_found()
     var city: Dictionary = _game.get_selected_city()
-    _warrior.disabled = city.is_empty() or str(city.get("project", "")) != ""
+    var busy: bool = city.is_empty() or str(city.get("project", "")) != "" or _game.game_over
+    _warrior.disabled = busy
+    _builder_button.disabled = busy
+    _archer_button.disabled = busy or not _game.researched.has("metallurgy")
+    _farm_builder.disabled = not _game.builder_can_improve("farm")
+    _mine_builder.disabled = not _game.builder_can_improve("mine")
+    for kind in _wonder_buttons:
+        var eligible: bool = _game.WonderRules.can_build(str(kind), _game.researched, _game.wonders)
+        _wonder_buttons[kind].disabled = busy or not eligible
     _unit.disabled = _game.player_unit_count() == 0
     for kind in _district_buttons:
-        var unavailable: bool = city.is_empty() or str(city.get("project", "")) != ""
+        var unavailable: bool = busy
         _district_buttons[kind].disabled = unavailable
     for button in _focus_buttons:
         button.disabled = city.is_empty()
@@ -311,7 +348,7 @@ func _refresh() -> void:
         ]
         if project != "":
             _project.text += "\nObra: %s  %d / %d" % [
-                _short_district_name(project), int(city["progress"]),
+                str(DistrictRules.LABELS.get(project, _short_district_name(project))), int(city["progress"]),
                 int(DistrictRules.COSTS.get(project, 12))
             ]
     else:

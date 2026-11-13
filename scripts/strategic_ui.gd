@@ -4,6 +4,7 @@ extends Control
 
 const CivicRules = preload("res://scripts/civic_rules.gd")
 const VictoryRules = preload("res://scripts/victory_rules.gd")
+const PolicyRules = preload("res://scripts/policy_rules.gd")
 
 var game: Node
 var _civics: ColorRect
@@ -14,6 +15,7 @@ var _diplomacy_summary: Label
 var _victory_summary: Label
 var _civic_buttons: Dictionary = {}
 var _government_buttons: Dictionary = {}
+var _policy_buttons: Dictionary = {}
 var _dip_buttons: Dictionary = {}
 var _victory_labels: Dictionary = {}
 var _capture_button: Button
@@ -105,8 +107,8 @@ func _overlay(overlay_name: String) -> ColorRect:
     sheet.anchor_bottom = 0.5
     sheet.offset_left = -428.0
     sheet.offset_right = 428.0
-    sheet.offset_top = -296.0
-    sheet.offset_bottom = 296.0
+    sheet.offset_top = -322.0
+    sheet.offset_bottom = 322.0
     shade.add_child(sheet)
     var contents: VBoxContainer = VBoxContainer.new()
     contents.name = "Coluna"
@@ -155,7 +157,21 @@ func _build_civics() -> void:
         btn.custom_minimum_size.x = 150
         governments.add_child(btn)
         _government_buttons[key] = btn
-    column.add_child(_label("Os governos modificam diretamente a cultura, ouro e ciência das cidades.", 14))
+    column.add_child(_label("CARTAS POLÍTICAS  ·  UMA CARTA ATIVA", 14, true))
+    var policy_row: HBoxContainer = HBoxContainer.new()
+    policy_row.add_theme_constant_override("separation", 7)
+    column.add_child(policy_row)
+    for key in PolicyRules.ORDER:
+        var policy: Dictionary = PolicyRules.POLICIES[key]
+        var btn: Button = _button(str(policy["name"]), _choose_policy.bind(key))
+        btn.name = "Politica_%s" % key
+        btn.custom_minimum_size.x = 163
+        policy_row.add_child(btn)
+        _policy_buttons[key] = btn
+    var reset: Button = _button("LIMPAR CARTA", _choose_policy.bind(""))
+    reset.name = "Politica_Limpar"
+    policy_row.add_child(reset)
+    column.add_child(_label("Colheitas: +1 alimento  ·  Administração: +2 ouro  ·  Milícia: +5 ataque", 13))
     column.add_child(_button("FECHAR  [ESC]", close_all))
 
 
@@ -233,6 +249,10 @@ func _choose_government(key: String) -> void:
     game.choose_government(key)
 
 
+func _choose_policy(key: String) -> void:
+    game.choose_policy(key)
+
+
 func _gift() -> void:
     game.send_gift()
 
@@ -274,6 +294,13 @@ func _refresh() -> void:
         var btn: Button = _government_buttons[key]
         btn.disabled = not CivicRules.government_unlocked(str(key), game.civics_completed) or game.game_over
         btn.text = str(CivicRules.GOVERNMENTS[key]["name"]) + ("  ✓" if game.government == str(key) else "")
+
+    for key in _policy_buttons:
+        var policy_button: Button = _policy_buttons[key]
+        policy_button.disabled = not PolicyRules.unlocked(str(key), game.civics_completed) or game.game_over
+        policy_button.text = str(PolicyRules.POLICIES[key]["name"]) + (
+            " ✓" if game.active_policy == str(key) else ""
+        )
 
     var state: Dictionary = game.diplomacy
     var peace: int = int(state["peace_turns"])

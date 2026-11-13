@@ -1,4 +1,4 @@
-name: Godot 4.7.2 · Aurora M8–M10 Validation
+name: Godot 4.7.2 · Aurora M11-M16 Validation
 on:
   push:
     branches: [main, "feat/**"]
@@ -102,6 +102,42 @@ jobs:
           set -o pipefail
           timeout 90s godot --headless --path . --script res://tests/victory_smoke.gd 2>&1 | tee godot-m10.log
           grep -q "M10_SMOKE_OK" godot-m10.log
+      - name: M11 - Recursos e rendimentos
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout 120s godot --headless --path . --script res://tests/resource_smoke.gd 2>&1 | tee godot-resource_smoke.log
+          grep -q "M11_SMOKE_OK" godot-resource_smoke.log
+      - name: M12 - Construtores e melhorias
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout 120s godot --headless --path . --script res://tests/builder_smoke.gd 2>&1 | tee godot-builder_smoke.log
+          grep -q "M12_SMOKE_OK" godot-builder_smoke.log
+      - name: M13 - Arqueiros à distância
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout 120s godot --headless --path . --script res://tests/archer_smoke.gd 2>&1 | tee godot-archer_smoke.log
+          grep -q "M13_SMOKE_OK" godot-archer_smoke.log
+      - name: M14 - Políticas de governo
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout 120s godot --headless --path . --script res://tests/policy_smoke.gd 2>&1 | tee godot-policy_smoke.log
+          grep -q "M14_SMOKE_OK" godot-policy_smoke.log
+      - name: M15 - Maravilhas únicas
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout 120s godot --headless --path . --script res://tests/wonder_smoke.gd 2>&1 | tee godot-wonder_smoke.log
+          grep -q "M15_SMOKE_OK" godot-wonder_smoke.log
+      - name: M16 - IA estratégica adaptativa
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout 120s godot --headless --path . --script res://tests/ai_strategy_smoke.gd 2>&1 | tee godot-ai_strategy_smoke.log
+          grep -q "M16_SMOKE_OK" godot-ai_strategy_smoke.log
       - name: Captura real com Godot e X virtual
         shell: bash
         run: |
@@ -123,11 +159,18 @@ jobs:
           timeout 120s xvfb-run -a -s "-screen 0 1600x900x24" godot --path . --script res://tests/strategic_capture.gd 2>&1 | tee godot-m8-m10-visual.log
           grep -q "M8_M10_VISUAL_OK" godot-m8-m10-visual.log
           test "$(find . -maxdepth 1 -name 'aurora_m*.png' | wc -l)" -eq 5
+      - name: Fotografar as seis etapas M11–M16 no Godot
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout 150s xvfb-run -a -s "-screen 0 1600x900x24" godot --path . --script res://tests/m11_m16_gallery.gd 2>&1 | tee godot-six-gallery.log
+          grep -q "SIX_GALLERY_OK" godot-six-gallery.log
+          test "$(find . -maxdepth 1 -name 'six_*.png' | wc -l)" -eq 6
       - name: Guardar logs para diagnóstico
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: aurora-m8-m10-validacao
+          name: aurora-m11-m16-validacao
           path: |
             godot-import.log
             godot-smoke.log
@@ -142,6 +185,14 @@ jobs:
             godot-m8.log
             godot-m9.log
             godot-m10.log
+            godot-resource_smoke.log
+            godot-builder_smoke.log
+            godot-archer_smoke.log
+            godot-policy_smoke.log
+            godot-wonder_smoke.log
+            godot-ai_strategy_smoke.log
+            godot-six-gallery.log
+            six_*.png
             godot-m8-m10-visual.log
             aurora_m*.png
             godot-galeria.log

@@ -4,6 +4,8 @@ extends Node3D
 
 const TerrainArt = preload("res://scripts/terrain_art.gd")
 const CoastArt = preload("res://scripts/coast_art.gd")
+const ResourceRules = preload("res://scripts/resource_rules.gd")
+const ResourceVisuals = preload("res://scripts/resource_visuals.gd")
 
 signal map_ready
 signal hex_selected(cell: Vector2i)
@@ -117,6 +119,7 @@ func _build_terrain() -> void:
                 "position": center,
                 "water": water,
                 "biome": biome,
+                "resource": ResourceRules.kind_for(cell, biome, seed_value),
                 "color": tile_color
             }
 
@@ -143,6 +146,7 @@ func _build_terrain() -> void:
     TerrainArt.decorate(art, tiles, seed_value)
     _build_sea_backdrop()
     terrain.add_child(CoastArt.make(tiles, RADIUS))
+    terrain.add_child(ResourceVisuals.make(tiles))
 
 
 func _corner(center: Vector3, side: int) -> Vector3:

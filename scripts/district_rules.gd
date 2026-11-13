@@ -5,6 +5,10 @@ const CityRules = preload("res://scripts/city_rules.gd")
 
 const COSTS: Dictionary = {
     "warrior": 12,
+    "builder": 16,
+    "archer": 20,
+    "sky_observatory": 62,
+    "royal_gardens": 54,
     "campus": 24,
     "market": 22,
     "industrial": 27,
@@ -16,6 +20,10 @@ const COSTS: Dictionary = {
 
 const LABELS: Dictionary = {
     "warrior": "Guerreiro",
+    "builder": "Construtor",
+    "archer": "Arqueiro",
+    "sky_observatory": "Observatório Celeste",
+    "royal_gardens": "Jardins Reais",
     "campus": "Academia",
     "market": "Mercado",
     "industrial": "Oficinas",
@@ -33,7 +41,7 @@ static func can_place(
     kind: String, cell: Vector2i, city: Dictionary,
     tiles: Dictionary, cities: Array[Dictionary], districts: Array[Dictionary]
 ) -> bool:
-    if not COSTS.has(kind) or kind == "warrior" or not tiles.has(cell):
+    if not COSTS.has(kind) or kind in ["warrior", "builder", "archer", "sky_observatory", "royal_gardens"] or not tiles.has(cell):
         return false
     var distance: int = CityRules.hex_distance(cell, city["coords"])
     if distance < 1 or distance > 2:
