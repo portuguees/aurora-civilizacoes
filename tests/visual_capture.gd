@@ -89,6 +89,17 @@ func _capture() -> void:
     if unit_model.get_node_or_null("NomeUnidade") == null:
         _fail("VISUAL: os guerreiros estão sem faixa de identificação")
         return
+    var model: Node = unit_model.get_node_or_null("Soldado_0/ImportedGLB")
+    if model == null:
+        _fail("VISUAL: o guerreiro não recebeu o novo modelo GLB")
+        return
+    var glb_meshes: Array[Node] = model.find_children("*", "MeshInstance3D", true, false)
+    if glb_meshes.is_empty():
+        _fail("VISUAL: importação GLB sem geometria visível")
+        return
+    if unit_model.get_node_or_null("Soldado_3/ImportedGLB") == null:
+        _fail("VISUAL: a formação não contém quatro personagens GLB")
+        return
 
     for i in range(16):
         await process_frame
@@ -98,9 +109,9 @@ func _capture() -> void:
     if frame == null or frame.get_width() < 700 or frame.get_height() < 400:
         _fail("VISUAL: não foi possível obter uma imagem do jogo")
         return
-    var output: String = "res://visual-m35.png"
+    var output: String = "res://visual-m4.png"
     if frame.save_png(output) != OK:
         _fail("VISUAL: não foi possível escrever a captura PNG")
         return
-    print("M35_VISUAL_OK: cena renderizada ", frame.get_width(), "x", frame.get_height(), "; cidade, combate, barras de vida, nevoeiro, estradas e HUD")
+    print("M4_VISUAL_OK: cena renderizada ", frame.get_width(), "x", frame.get_height(), "; cidade, combate, barras de vida, nevoeiro, estradas e HUD")
     quit(0)

@@ -1,4 +1,4 @@
-name: Godot 4.7.2 · Aurora M3.5 Validation
+name: Godot 4.7.2 · Aurora M4 GLB Validation
 on:
   push:
     branches: [main, "feat/**"]
@@ -26,6 +26,10 @@ jobs:
         run: |
           set -o pipefail
           godot --headless --editor --path . --import --quit 2>&1 | tee godot-import.log
+          if grep -q "Vector3 cannot be normalized" godot-import.log; then
+            echo "Falha: normais inválidas nos modelos 3D importados."
+            exit 1
+          fi
       - name: Testar o mundo 3D, câmara e HUD
         shell: bash
         run: |
@@ -56,18 +60,24 @@ jobs:
           set -o pipefail
           godot --headless --path . --script res://tests/art_smoke.gd 2>&1 | tee godot-m35.log
           grep -q "M35_SMOKE_OK" godot-m35.log
+      - name: Importar modelos GLB e validar animações M4
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout 70s godot --headless --path . --script res://tests/glb_import_smoke.gd 2>&1 | tee godot-m4-glb.log
+          grep -q "M4_GLB_OK" godot-m4-glb.log
       - name: Captura real com Godot e X virtual
         shell: bash
         run: |
           set -o pipefail
           xvfb-run -a -s "-screen 0 1600x900x24" godot --path . --script res://tests/visual_capture.gd 2>&1 | tee godot-visual.log
-          grep -q "M35_VISUAL_OK" godot-visual.log
-          test -s visual-m35.png
+          grep -q "M4_VISUAL_OK" godot-visual.log
+          test -s visual-m4.png
       - name: Guardar logs para diagnóstico
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: aurora-m35-godot-validation
+          name: aurora-m4-godot-validation
           path: |
             godot-import.log
             godot-smoke.log
@@ -75,6 +85,7 @@ jobs:
             godot-m2.log
             godot-m3.log
             godot-m35.log
+            godot-m4-glb.log
             godot-visual.log
-            visual-m35.png
+            visual-m4.png
           if-no-files-found: ignore
