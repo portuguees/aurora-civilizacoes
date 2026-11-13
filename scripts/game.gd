@@ -16,6 +16,9 @@ const ExplorationVisuals = preload("res://scripts/exploration_visuals.gd")
 const CombatFX = preload("res://scripts/combat_fx.gd")
 const ConstructionVisuals = preload("res://scripts/construction_visuals.gd")
 const TechnologyRules = preload("res://scripts/technology_rules.gd")
+const CivicRules = preload("res://scripts/civic_rules.gd")
+const DiplomacyRules = preload("res://scripts/diplomacy_rules.gd")
+const VictoryRules = preload("res://scripts/victory_rules.gd")
 
 const PLAYER: int = 0
 const RIVAL: int = 1
@@ -32,6 +35,17 @@ var accumulated_science: int = 0
 var researched: Array[String] = []
 var current_technology: String = ""
 var research_progress: Dictionary = {}
+var accumulated_culture: int = 0
+var civics_completed: Array[String] = []
+var current_civic: String = ""
+var civic_progress: Dictionary = {}
+var government: String = "chiefdom"
+var diplomacy: Dictionary = {}
+var rival_founded: bool = false
+var game_over: bool = false
+var victory_type: String = ""
+var victory_turn: int = 0
+var rival_goal: String = "Explorar"
 var last_event: String = "Explora o mundo e funda a capital."
 var explored: Dictionary = {}
 var visible_hexes: Dictionary = {}
@@ -82,6 +96,17 @@ func _new_session() -> void:
     researched.clear()
     research_progress.clear()
     current_technology = ""
+    accumulated_culture = 0
+    civics_completed.clear()
+    civic_progress.clear()
+    current_civic = ""
+    government = "chiefdom"
+    diplomacy = DiplomacyRules.initial_state()
+    rival_founded = false
+    game_over = false
+    victory_type = ""
+    victory_turn = 0
+    rival_goal = "Explorar"
     turns = 1
     _id_counter = 1
     selected_city_id = -1
@@ -201,6 +226,8 @@ func has_starting_units() -> bool:
 
 
 func can_found() -> bool:
+    if game_over:
+        return false
     var unit: Dictionary = get_active()
     if unit.is_empty() or str(unit["kind"]) != "settler" or int(unit["owner"]) != PLAYER:
         return false
@@ -272,7 +299,186 @@ func get_city_yields(city: Dictionary) -> Dictionary:
             yields["gold"] = int(yields["gold"]) + 3
         if researched.has("engineering"):
             yields["production"] = int(yields["production"]) + 2
+    yields["culture"] = 1 + int(city["population"])
+    if int(city["owner"]) == PLAYER:
+        CivicRules.apply_yields(yields, civics_completed, government)
     return yields
+
+
+func choose_civic(key: String) -> bool:
+    if game_over or not CivicRules.can_start(key, civics_completed):
+        return false
+    current_civic = key
+    last_event = "Novo princípio cívico: %s." % CivicRules.title(key)
+    state_changed.emit()
+    return true
+
+
+func _add_culture(amount: int) -> void:
+    if current_civic == "" or not CivicRules.CIVICS.has(current_civic):
+        return
+    var key: String = current_civic
+    civic_progress[key] = int(civic_progress.get(key, 0)) + amount
+    if int(civic_progress[key]) >= CivicRules.cost(key):
+        civics_completed.append(key)
+        current_civic = ""
+        last_event = "Princípio cívico concluído: %s." % CivicRules.title(key)
+
+
+func civic_status() -> Dictionary:
+    return {
+        "name": CivicRules.title(current_civic),
+        "cost": CivicRules.cost(current_civic),
+        "progress": int(civic_progress.get(current_civic, 0)),
+        "completed": civics_completed.size(),
+        "culture": accumulated_culture,
+        "government": str(CivicRules.GOVERNMENTS[government]["name"])
+    }
+
+
+func choose_government(key: String) -> bool:
+    if game_over or not CivicRules.government_unlocked(key, civics_completed):
+        return false
+    government = key
+    last_event = "Novo governo: %s." % str(CivicRules.GOVERNMENTS[key]["name"])
+    state_changed.emit()
+    return true
+
+
+func has_contact() -> bool:
+    return DiplomacyRules.contact(self)
+
+
+func is_at_peace() -> bool:
+    return DiplomacyRules.is_at_peace(diplomacy)
+
+
+func can_gift() -> bool:
+    return DiplomacyRules.can_gift(self)
+
+
+func can_peace() -> bool:
+    return DiplomacyRules.can_peace(self)
+
+
+func can_trade() -> bool:
+    return DiplomacyRules.can_trade(self)
+
+
+func send_gift() -> bool:
+    var accepted: bool = DiplomacyRules.gift(self)
+    if accepted:
+        state_changed.emit()
+    return accepted
+
+
+func negotiate_peace() -> bool:
+    var accepted: bool = DiplomacyRules.peace(self)
+    if accepted:
+        state_changed.emit()
+    return accepted
+
+
+func start_trade() -> bool:
+    var accepted: bool = DiplomacyRules.trade(self)
+    if accepted:
+        state_changed.emit()
+    return accepted
+
+
+func declare_war() -> bool:
+    var accepted: bool = DiplomacyRules.declare_war(self)
+    if accepted:
+        state_changed.emit()
+    return accepted
+
+
+func note_hostility(attacker_owner: int, defender_owner: int) -> void:
+    DiplomacyRules.hostility(self, attacker_owner, defender_owner)
+
+
+func victory_details() -> Dictionary:
+    return VictoryRules.describe(self)
+
+
+func can_capture_rival() -> bool:
+    return VictoryRules.can_capture(self)
+
+
+func capture_rival_capital() -> bool:
+    if not can_capture_rival():
+        return false
+    for city in cities:
+        if int(city["owner"]) != RIVAL:
+            continue
+        var captured_id: int = int(city["id"])
+        city["owner"] = PLAYER
+        city["name"] = "Valdoria Conquistada"
+        city["project"] = ""
+        city["progress"] = 0
+        city["site"] = Vector2i(-1, -1)
+        for district in districts:
+            if int(district["city_id"]) == captured_id:
+                district["owner"] = PLAYER
+        selected_city_id = captured_id
+        last_event = "Valdoria conquistada! A campanha militar foi concluída."
+        _evaluate_victory()
+        _draw_models()
+        state_changed.emit()
+        return true
+    return false
+
+
+func _evaluate_victory() -> void:
+    var winner: String = VictoryRules.check(self)
+    if winner == "":
+        return
+    victory_type = winner
+    victory_turn = turns
+    game_over = true
+    last_event = "%s no turno %d!" % [str(VictoryRules.TITLES[winner]), turns]
+
+
+func _rival_planning() -> void:
+    if not rival_founded or city_count(RIVAL) == 0 or game_over:
+        return
+    for city in cities:
+        if int(city["owner"]) != RIVAL or str(city.get("project", "")) != "":
+            continue
+        var next_kind: String = ""
+        var has_academy: bool = false
+        var has_market: bool = false
+        for district in districts:
+            if int(district["city_id"]) == int(city["id"]):
+                if str(district["kind"]) == "campus":
+                    has_academy = true
+                if str(district["kind"]) == "market":
+                    has_market = true
+        if not has_market:
+            next_kind = "market"
+        elif not has_academy:
+            next_kind = "campus"
+        else:
+            next_kind = "warrior"
+        if next_kind == "warrior":
+            var enemy_warriors: int = 0
+            for unit in units:
+                if int(unit["owner"]) == RIVAL and str(unit["kind"]) == "warrior":
+                    enemy_warriors += 1
+            if enemy_warriors >= 3:
+                rival_goal = "Defender o território"
+                return
+            city["project"] = "warrior"
+            city["progress"] = 0
+            rival_goal = "Treinar guarnição"
+            return
+        for cell in world.tiles:
+            if DistrictRules.can_place(next_kind, cell, city, world.tiles, cities, districts):
+                city["project"] = next_kind
+                city["site"] = cell
+                city["progress"] = 0
+                rival_goal = "Desenvolver %s" % str(DistrictRules.LABELS[next_kind])
+                return
 
 
 func available_technologies() -> Array[String]:
@@ -280,7 +486,7 @@ func available_technologies() -> Array[String]:
 
 
 func choose_technology(key: String) -> bool:
-    if not TechnologyRules.can_start(key, researched):
+    if game_over or not TechnologyRules.can_start(key, researched):
         return false
     current_technology = key
     last_event = "Investigação selecionada: %s." % TechnologyRules.title(key)
@@ -316,6 +522,8 @@ func _add_research(science_income: int) -> void:
 
 
 func queue_warrior() -> void:
+    if game_over:
+        return
     var city: Dictionary = get_selected_city()
     if city.is_empty():
         for candidate in cities:
@@ -333,6 +541,8 @@ func queue_warrior() -> void:
 
 
 func choose_district(kind: String) -> bool:
+    if game_over:
+        return false
     var city: Dictionary = get_selected_city()
     if city.is_empty() or str(city.get("project", "")) != "" or not DistrictRules.COSTS.has(kind) or kind == "warrior":
         return false
@@ -354,6 +564,8 @@ func cancel_placement() -> void:
 
 
 func confirm_district(cell: Vector2i) -> bool:
+    if game_over:
+        return false
     var city: Dictionary = get_selected_city()
     if city.is_empty() or placing_district == "" or str(city.get("project", "")) != "":
         return false
@@ -369,6 +581,8 @@ func confirm_district(cell: Vector2i) -> bool:
 
 
 func set_city_focus(mode: String) -> void:
+    if game_over:
+        return
     var city: Dictionary = get_selected_city()
     if city.is_empty() or mode not in ["balanced", "food", "production"]:
         return
@@ -394,6 +608,8 @@ func _finish_project(city: Dictionary) -> void:
 
 
 func end_turn() -> void:
+    if game_over:
+        return
     turns += 1
     MilitarySystem.begin_new_turn(self)
     for city in cities:
@@ -407,6 +623,8 @@ func end_turn() -> void:
             treasury += int(yields["gold"])
             accumulated_science += int(yields["science"])
             _add_research(int(yields["science"]))
+            accumulated_culture += int(yields["culture"])
+            _add_culture(int(yields["culture"]))
         var project: String = str(city.get("project", ""))
         if DistrictRules.COSTS.has(project):
             city["progress"] = int(city["progress"]) + int(yields["production"])
@@ -425,8 +643,12 @@ func end_turn() -> void:
                 })
                 _id_counter += 1
                 units.erase(unit)
+                rival_founded = true
                 break
+    DiplomacyRules.tick(self)
+    _rival_planning()
     MilitarySystem.rival_turn(self)
+    _evaluate_victory()
     _draw_models()
     state_changed.emit()
 
@@ -477,6 +699,8 @@ func _move_selected(target: Vector2i) -> void:
 
 
 func issue_order(target: Vector2i) -> bool:
+    if game_over:
+        return false
     var accepted: bool = MilitarySystem.issue_order(self, target)
     _draw_models()
     state_changed.emit()
@@ -655,6 +879,17 @@ func save_game() -> bool:
         "researched": researched,
         "research_selected": current_technology,
         "research_progress": research_progress,
+        "culture": accumulated_culture,
+        "civics": civics_completed,
+        "civic_selected": current_civic,
+        "civic_progress": civic_progress,
+        "government": government,
+        "diplomacy": diplomacy,
+        "rival_founded": rival_founded,
+        "rival_goal": rival_goal,
+        "game_over": game_over,
+        "victory_type": victory_type,
+        "victory_turn": victory_turn,
         "last_event": last_event,
         "explored": _encode_explored(),
         "next_id": _id_counter,
@@ -711,6 +946,38 @@ func load_game() -> bool:
     current_technology = str(data.get("research_selected", ""))
     if not TechnologyRules.can_start(current_technology, researched):
         current_technology = ""
+    accumulated_culture = maxi(0, int(data.get("culture", 0)))
+    civics_completed.clear()
+    for item in data.get("civics", []):
+        var civic_key: String = str(item)
+        if CivicRules.CIVICS.has(civic_key) and not civics_completed.has(civic_key):
+            civics_completed.append(civic_key)
+    civic_progress = {}
+    var raw_civic_progress: Variant = data.get("civic_progress", {})
+    if raw_civic_progress is Dictionary:
+        for key in raw_civic_progress:
+            if CivicRules.CIVICS.has(str(key)):
+                civic_progress[str(key)] = maxi(0, int(raw_civic_progress[key]))
+    current_civic = str(data.get("civic_selected", ""))
+    if not CivicRules.can_start(current_civic, civics_completed):
+        current_civic = ""
+    government = str(data.get("government", "chiefdom"))
+    if not CivicRules.government_unlocked(government, civics_completed):
+        government = "chiefdom"
+    diplomacy = DiplomacyRules.initial_state()
+    var old_diplomacy: Variant = data.get("diplomacy", {})
+    if old_diplomacy is Dictionary:
+        for key in diplomacy.keys():
+            if old_diplomacy.has(key):
+                if key in ["rival_posture"]:
+                    diplomacy[key] = str(old_diplomacy[key])
+                else:
+                    diplomacy[key] = int(old_diplomacy[key])
+    rival_founded = bool(data.get("rival_founded", city_count(RIVAL) > 0))
+    rival_goal = str(data.get("rival_goal", "Explorar"))
+    game_over = bool(data.get("game_over", false))
+    victory_type = str(data.get("victory_type", ""))
+    victory_turn = maxi(0, int(data.get("victory_turn", 0)))
     _id_counter = maxi(1, int(data.get("next_id", 1)))
     explored.clear()
     for coords in data.get("explored", []):

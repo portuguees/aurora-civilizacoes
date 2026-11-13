@@ -95,6 +95,8 @@ static func attack(game: Node, attacker: Dictionary, defender: Dictionary) -> bo
         return false
     if int(attacker["owner"]) == int(defender["owner"]) or int(attacker.get("move_points", 0)) < 1:
         return false
+    if game.is_at_peace():
+        return false
     if Navigation.distance(attacker["coords"], defender["coords"]) != 1:
         return false
     var terrain: String = str(game.world.tiles[defender["coords"]]["biome"])
@@ -103,6 +105,7 @@ static func attack(game: Node, attacker: Dictionary, defender: Dictionary) -> bo
     strength += int(game.call("technology_attack_bonus", int(attacker["owner"])))
     var damage: int = maxi(12, strength - defensive_bonus)
     defender["health"] = int(defender["health"]) - damage
+    game.note_hostility(int(attacker["owner"]), int(defender["owner"]))
     game.call("record_combat", int(attacker["id"]), defender["coords"], damage, int(defender["health"]) <= 0)
     attacker["move_points"] = 0
     attacker["moved"] = true
@@ -164,7 +167,7 @@ static func rival_turn(game: Node) -> void:
             continue
         var fought: bool = false
         for player in game.units.duplicate():
-            if int(player["owner"]) == game.PLAYER and Navigation.distance(unit["coords"], player["coords"]) == 1:
+            if not game.is_at_peace() and int(player["owner"]) == game.PLAYER and Navigation.distance(unit["coords"], player["coords"]) == 1:
                 fought = attack(game, unit, player)
                 break
         if fought or not game.units.has(unit):

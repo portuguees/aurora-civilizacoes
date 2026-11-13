@@ -1,4 +1,4 @@
-name: Godot 4.7.2 · Aurora M5-M7 Validation
+name: Godot 4.7.2 · Aurora M8–M10 Validation
 on:
   push:
     branches: [main, "feat/**"]
@@ -84,6 +84,24 @@ jobs:
           set -o pipefail
           timeout 90s godot --headless --path . --script res://tests/technology_smoke.gd 2>&1 | tee godot-m7.log
           grep -q "M7_SMOKE_OK" godot-m7.log
+      - name: M8 - Cultura, governos e gravação
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout 90s godot --headless --path . --script res://tests/civics_smoke.gd 2>&1 | tee godot-m8.log
+          grep -q "M8_SMOKE_OK" godot-m8.log
+      - name: M9 - Diplomacia, paz e comércio
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout 90s godot --headless --path . --script res://tests/diplomacy_smoke.gd 2>&1 | tee godot-m9.log
+          grep -q "M9_SMOKE_OK" godot-m9.log
+      - name: M10 - Quatro vitórias e IA com projetos
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout 90s godot --headless --path . --script res://tests/victory_smoke.gd 2>&1 | tee godot-m10.log
+          grep -q "M10_SMOKE_OK" godot-m10.log
       - name: Captura real com Godot e X virtual
         shell: bash
         run: |
@@ -91,11 +109,25 @@ jobs:
           xvfb-run -a -s "-screen 0 1600x900x24" godot --path . --script res://tests/visual_capture.gd 2>&1 | tee godot-visual.log
           grep -q "M7_VISUAL_OK" godot-visual.log
           test -s visual-m7-mundo.png
+      - name: Criar galeria de oito prints reais do jogo
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout 120s xvfb-run -a -s "-screen 0 1600x900x24" godot --path . --script res://tests/gallery_capture.gd 2>&1 | tee godot-galeria.log
+          grep -q "GALERIA_COMPLETA_OK" godot-galeria.log
+          test "$(find . -maxdepth 1 -name 'galeria_*.png' | wc -l)" -eq 8
+      - name: Fotografar cultura, diplomacia e condições de vitória
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout 120s xvfb-run -a -s "-screen 0 1600x900x24" godot --path . --script res://tests/strategic_capture.gd 2>&1 | tee godot-m8-m10-visual.log
+          grep -q "M8_M10_VISUAL_OK" godot-m8-m10-visual.log
+          test "$(find . -maxdepth 1 -name 'aurora_m*.png' | wc -l)" -eq 5
       - name: Guardar logs para diagnóstico
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: aurora-m5-m7-validacao
+          name: aurora-m8-m10-validacao
           path: |
             godot-import.log
             godot-smoke.log
@@ -107,6 +139,13 @@ jobs:
             godot-m5.log
             godot-m6.log
             godot-m7.log
+            godot-m8.log
+            godot-m9.log
+            godot-m10.log
+            godot-m8-m10-visual.log
+            aurora_m*.png
+            godot-galeria.log
+            galeria_*.png
             visual-m7-tecnologias.png
             godot-visual.log
             visual-m7-mundo.png
