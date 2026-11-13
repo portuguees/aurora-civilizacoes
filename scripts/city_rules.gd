@@ -1,4 +1,5 @@
 extends RefCounted
+const ResourceRules = preload("res://scripts/resource_rules.gd")
 ## Regras de rendimento por parcela. Não depende de nós nem da interface.
 ## Uma parcela só pode ser trabalhada por uma cidade, e o número de
 ## parcelas trabalhadas depende da população.
@@ -15,19 +16,24 @@ static func hex_distance(a: Vector2i, b: Vector2i) -> int:
 
 
 static func tile_yields(tile: Dictionary) -> Dictionary:
+    var result: Dictionary = {"food": 0, "production": 0}
     match str(tile.get("biome", "")):
         "grassland":
-            return {"food": 2, "production": 1}
+            result = {"food": 2, "production": 1}
         "plains":
             return {"food": 2, "production": 1}
         "forest":
-            return {"food": 1, "production": 2}
+            result = {"food": 1, "production": 2}
         "hills":
-            return {"food": 0, "production": 3}
+            result = {"food": 0, "production": 3}
         "water":
-            return {"food": 1, "production": 0}
+            result = {"food": 1, "production": 0}
         _:
-            return {"food": 0, "production": 0}
+            result = {"food": 0, "production": 0}
+    var bonus: Dictionary = ResourceRules.bonus(str(tile.get("resource", "")))
+    result["food"] = int(result["food"]) + int(bonus["food"])
+    result["production"] = int(result["production"]) + int(bonus["production"])
+    return result
 
 
 static func growth_cost(population: int) -> int:
