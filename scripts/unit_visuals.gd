@@ -1,5 +1,7 @@
 extends RefCounted
 const UnitMotion = preload("res://scripts/unit_motion.gd")
+const WARRIOR_MODEL: PackedScene = preload("res://assets/models/warrior_animated.glb")
+const SETTLER_MODEL: PackedScene = preload("res://assets/models/settler_animated.glb")
 ## Grupos de unidades geométricas 3D com silhuetas distintas.
 ## Um colono tem carroça e acompanhantes; um guerreiro tem formação com escudos.
 
@@ -7,7 +9,7 @@ const UnitMotion = preload("res://scripts/unit_motion.gd")
 static func make(unit: Dictionary, selected: bool) -> Node3D:
     var root: Node3D = Node3D.new()
     root.set_script(UnitMotion)
-    root.set_meta("art_revision", "M35")
+    root.set_meta("art_revision", "M4_GLB")
     var owner: int = int(unit.get("owner", 0))
     var faction: Color = Color("#39bfe4") if owner == 0 else Color("#dc8e54")
     var kind: String = str(unit.get("kind", "warrior"))
@@ -80,7 +82,28 @@ static func _animated_person(root: Node3D, index: int, where: Vector3, color: Co
     actor.name = "Soldado_%d" % index
     actor.position = where
     root.add_child(actor)
-    _person(actor, Vector3.ZERO, color, armed)
+    var packed: PackedScene = WARRIOR_MODEL if armed else SETTLER_MODEL
+    var imported: Node3D = packed.instantiate() as Node3D
+    if imported == null:
+        push_error("Aurora M4: não foi possível instanciar o modelo GLB da unidade")
+        return
+    imported.name = "ImportedGLB"
+    imported.scale = Vector3.ONE * (0.68 if armed else 0.63)
+    actor.add_child(imported)
+    # As cores da roupa acompanham a civilização, sem esconder metais e rostos.
+    for mesh_node in imported.find_children("*", "MeshInstance3D", true, false):
+        var part: MeshInstance3D = mesh_node as MeshInstance3D
+        if part.mesh == null:
+            continue
+        for surface in range(part.mesh.get_surface_count()):
+            var base_mat: Material = part.get_active_material(surface)
+            if base_mat is StandardMaterial3D:
+                var mat: StandardMaterial3D = base_mat as StandardMaterial3D
+                var part_name: String = str(mat.resource_name).to_lower()
+                if part_name.contains("cloth") or part_name.contains("cape"):
+                    var dyed: StandardMaterial3D = mat.duplicate()
+                    dyed.albedo_color = color
+                    part.set_surface_override_material(surface, dyed)
 
 
 static func _person(parent: Node3D, base: Vector3, faction: Color, armed: bool) -> void:
