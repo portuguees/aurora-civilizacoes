@@ -43,5 +43,41 @@ func _run() -> void:
         print("M4_GLB_MODEL_OK: ", path, " | meshes=", meshes.size(), " armature=", armature.name, " animacoes=", anims)
         root.remove_child(scene)
         scene.queue_free()
+    var world_scene: PackedScene = load("res://scenes/World.tscn")
+    if world_scene == null:
+        _fail("O mapa não carregou com os GLB")
+        return
+    var world: Node = world_scene.instantiate()
+    root.add_child(world)
+    await process_frame
+    var game: Node = world.get_node_or_null("Game")
+    if game == null:
+        _fail("O núcleo da partida não iniciou")
+        return
+    var warrior: Node = game.get_node_or_null("ModelosDeJogo/Unidade_2_warrior")
+    var settler: Node = game.get_node_or_null("ModelosDeJogo/Unidade_1_settler")
+    if warrior == null or settler == null:
+        _fail("Os modelos das unidades desapareceram do turno inicial")
+        return
+    if not warrior.has_method("get_imported_animator_count") or int(warrior.call("get_imported_animator_count")) != 4:
+        _fail("A formação guerreira não tem quatro animadores GLB")
+        return
+    if not settler.has_method("get_imported_animator_count") or int(settler.call("get_imported_animator_count")) != 2:
+        _fail("O colono não tem dois personagens GLB animados")
+        return
+    warrior.call("begin_march")
+    var players: Array[Node] = warrior.find_children("*", "AnimationPlayer", true, false)
+    for node in players:
+        var player: AnimationPlayer = node as AnimationPlayer
+        if not str(player.current_animation).ends_with("Walk"):
+            _fail("O comando de movimento não ativou o clip Walk")
+            return
+    warrior.call("end_march")
+    for node in players:
+        var player: AnimationPlayer = node as AnimationPlayer
+        if not str(player.current_animation).ends_with("Idle"):
+            _fail("O fim de movimento não reativou o clip Idle")
+            return
+    print("M4_GLB_INTEGRACAO_OK: quatro guerreiros, dois colonos e transições Walk/Idle")
     print("M4_GLB_OK: modelos GLB, articulações e clips de animação importados no Godot")
     quit(0)
