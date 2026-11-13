@@ -40,12 +40,12 @@ func _panel() -> PanelContainer:
     style.border_color = Color("#c2a471")
     style.set_border_width_all(1)
     style.set_corner_radius_all(10)
-    style.set_content_margin_all(11)
+    style.set_content_margin_all(14)
     panel.add_theme_stylebox_override("panel", style)
     return panel
 
 
-func _label(message: String, font_size: int = 13, accent: bool = false) -> Label:
+func _label(message: String, font_size: int = 15, accent: bool = false) -> Label:
     var item: Label = Label.new()
     item.text = message
     item.add_theme_font_size_override("font_size", font_size)
@@ -57,7 +57,8 @@ func _label(message: String, font_size: int = 13, accent: bool = false) -> Label
 func _button(title: String, callback: Callable) -> Button:
     var item: Button = Button.new()
     item.text = title
-    item.custom_minimum_size.y = 30
+    item.custom_minimum_size.y = 34
+    item.add_theme_font_size_override("font_size", 15)
     item.pressed.connect(callback)
     return item
 
@@ -92,7 +93,7 @@ func _build() -> void:
 func _overlay(overlay_name: String) -> ColorRect:
     var shade: ColorRect = ColorRect.new()
     shade.name = overlay_name
-    shade.color = Color("#071923db")
+    shade.color = Color("#071923d3")
     shade.mouse_filter = Control.MOUSE_FILTER_STOP
     shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     add_child(shade)
@@ -102,10 +103,10 @@ func _overlay(overlay_name: String) -> ColorRect:
     sheet.anchor_right = 0.5
     sheet.anchor_top = 0.5
     sheet.anchor_bottom = 0.5
-    sheet.offset_left = -355.0
-    sheet.offset_right = 355.0
-    sheet.offset_top = -276.0
-    sheet.offset_bottom = 276.0
+    sheet.offset_left = -428.0
+    sheet.offset_right = 428.0
+    sheet.offset_top = -296.0
+    sheet.offset_bottom = 296.0
     shade.add_child(sheet)
     var contents: VBoxContainer = VBoxContainer.new()
     contents.name = "Coluna"
@@ -120,10 +121,10 @@ func _column(overlay: ColorRect) -> VBoxContainer:
 
 func _build_civics() -> void:
     var column: VBoxContainer = _column(_civics)
-    column.add_child(_label("CULTURA, LEIS E FORMAS DE GOVERNO", 21, true))
-    _civic_summary = _label("Tradições e políticas em desenvolvimento.", 13)
+    column.add_child(_label("CULTURA, LEIS E FORMAS DE GOVERNO", 23, true))
+    _civic_summary = _label("Tradições e políticas em desenvolvimento.", 16)
     column.add_child(_civic_summary)
-    column.add_child(_label("PRINCÍPIOS CÍVICOS  ·  escolhe uma investigação cultural", 12, true))
+    column.add_child(_label("PRINCÍPIOS CÍVICOS  ·  escolhe uma investigação cultural", 15, true))
     for key in CivicRules.ORDER:
         var civic: Dictionary = CivicRules.CIVICS[key]
         var row: HBoxContainer = HBoxContainer.new()
@@ -131,7 +132,7 @@ func _build_civics() -> void:
         column.add_child(row)
         var select: Button = _button("%s · %d" % [str(civic["name"]), int(civic["cost"])], _choose_civic.bind(key))
         select.name = "Civic_%s" % key
-        select.custom_minimum_size.x = 224
+        select.custom_minimum_size.x = 250
         row.add_child(select)
         _civic_buttons[key] = select
         var requirements: PackedStringArray = PackedStringArray()
@@ -140,10 +141,10 @@ func _build_civics() -> void:
         var description: String = str(civic["effect"])
         if not requirements.is_empty():
             description += "  ·  Requer " + ", ".join(requirements)
-        var info: Label = _label(description, 11)
-        info.custom_minimum_size.x = 435
+        var info: Label = _label(description, 14)
+        info.custom_minimum_size.x = 525
         row.add_child(info)
-    column.add_child(_label("GOVERNO DO IMPÉRIO", 12, true))
+    column.add_child(_label("GOVERNO DO IMPÉRIO", 15, true))
     var governments: HBoxContainer = HBoxContainer.new()
     governments.add_theme_constant_override("separation", 9)
     column.add_child(governments)
@@ -154,17 +155,17 @@ func _build_civics() -> void:
         btn.custom_minimum_size.x = 150
         governments.add_child(btn)
         _government_buttons[key] = btn
-    column.add_child(_label("Os governos modificam diretamente a cultura, ouro e ciência das cidades.", 11))
+    column.add_child(_label("Os governos modificam diretamente a cultura, ouro e ciência das cidades.", 14))
     column.add_child(_button("FECHAR  [ESC]", close_all))
 
 
 func _build_diplomacy() -> void:
     var column: VBoxContainer = _column(_diplomacy)
-    column.add_child(_label("DIPLOMACIA COM VALDORIA", 21, true))
-    _diplomacy_summary = _label("Ainda não existe contacto com outra capital.", 14)
+    column.add_child(_label("DIPLOMACIA COM VALDORIA", 23, true))
+    _diplomacy_summary = _label("Ainda não existe contacto com outra capital.", 16)
     _diplomacy_summary.custom_minimum_size.y = 134
     column.add_child(_diplomacy_summary)
-    column.add_child(_label("ACORDOS E CARAVANAS", 12, true))
+    column.add_child(_label("ACORDOS E CARAVANAS", 15, true))
     var offers: Array[Dictionary] = [
         {"key": "gift", "label": "ENVIAR OFERTA  ·  25 OURO", "callback": Callable(self, "_gift")},
         {"key": "peace", "label": "NEGOCIAR PAZ  ·  12 OURO", "callback": Callable(self, "_peace")},
@@ -176,27 +177,27 @@ func _build_diplomacy() -> void:
         button.name = "Acao_%s" % str(data["key"])
         column.add_child(button)
         _dip_buttons[str(data["key"])] = button
-    column.add_child(_label("As caravanas dão ouro e cultura durante a paz. Um ataque quebra as negociações.", 12))
+    column.add_child(_label("As caravanas dão ouro e cultura durante a paz. Um ataque quebra as negociações.", 15))
     column.add_child(_button("FECHAR  [ESC]", close_all))
 
 
 func _build_victory() -> void:
     var column: VBoxContainer = _column(_victory)
-    column.add_child(_label("OBJETIVOS PARA VENCER A CAMPANHA", 21, true))
-    _victory_summary = _label("A campanha continua.", 14)
+    column.add_child(_label("OBJETIVOS PARA VENCER A CAMPANHA", 23, true))
+    _victory_summary = _label("A campanha continua.", 17, true)
     column.add_child(_victory_summary)
     for key in ["science", "culture", "economic", "military"]:
         var row: VBoxContainer = VBoxContainer.new()
         column.add_child(row)
-        row.add_child(_label(str(VictoryRules.TITLES[key]).to_upper(), 14, true))
-        var objective: Label = _label("A acompanhar os objetivos estratégicos.", 12)
+        row.add_child(_label(str(VictoryRules.TITLES[key]).to_upper(), 17, true))
+        var objective: Label = _label("A acompanhar os objetivos estratégicos.", 15)
         objective.name = "Objetivo_%s" % key
         row.add_child(objective)
         _victory_labels[key] = objective
     _capture_button = _button("CAPTURAR CAPITAL DE VALDORIA", _capture_capital)
     _capture_button.name = "CapturarValdoria"
     column.add_child(_capture_button)
-    column.add_child(_label("Captura: guerreiro adjacente, guarnição rival eliminada e ausência de tratado de paz.", 11))
+    column.add_child(_label("Captura: guerreiro adjacente, guarnição rival eliminada e ausência de tratado de paz.", 14))
     column.add_child(_button("FECHAR  [ESC]", close_all))
 
 
