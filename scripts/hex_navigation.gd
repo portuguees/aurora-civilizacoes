@@ -39,7 +39,7 @@ static func movement_cost(tile: Dictionary) -> int:
 
 
 static func movement_capacity(kind: String) -> int:
-    if kind == "settler":
+    if kind in ["settler", "builder", "archer"]:
         return 2
     return 3
 
