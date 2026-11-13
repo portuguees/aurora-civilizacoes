@@ -58,6 +58,13 @@ func _run() -> void:
     if not bool(warrior.get("marching")):
         _fail("A marcha não começou")
         return
+    var actor: Node3D = warrior.get_node("Soldado_0")
+    var before_pose: float = actor.position.y
+    # Simula 0,19 segundos de animação, independente da velocidade da CI.
+    warrior.call("_process", 0.19)
+    if absf(actor.position.y - before_pose) < 0.008:
+        _fail("O soldado não alterou efetivamente a pose durante a marcha")
+        return
     warrior.call("end_march")
     if bool(warrior.get("marching")):
         _fail("A marcha não terminou")
