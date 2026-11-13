@@ -13,6 +13,9 @@ const TerritoryVisuals = preload("res://scripts/territory_visuals.gd")
 const HexNavigation = preload("res://scripts/hex_navigation.gd")
 const MilitarySystem = preload("res://scripts/military_system.gd")
 const ExplorationVisuals = preload("res://scripts/exploration_visuals.gd")
+const CombatFX = preload("res://scripts/combat_fx.gd")
+const ConstructionVisuals = preload("res://scripts/construction_visuals.gd")
+const TechnologyRules = preload("res://scripts/technology_rules.gd")
 
 const PLAYER: int = 0
 const RIVAL: int = 1
@@ -26,6 +29,9 @@ var districts: Array[Dictionary] = []
 var placing_district: String = ""
 var treasury: int = 90
 var accumulated_science: int = 0
+var researched: Array[String] = []
+var current_technology: String = ""
+var research_progress: Dictionary = {}
 var last_event: String = "Explora o mundo e funda a capital."
 var explored: Dictionary = {}
 var visible_hexes: Dictionary = {}
@@ -37,6 +43,8 @@ var _overlays: Node3D
 var _infrastructure: Node3D
 var _fog: Node3D
 var _old_unit_positions: Dictionary = {}
+var _combat_marks: Array[Dictionary] = []
+var _combat_visuals: Node3D
 
 
 func _ready() -> void:
@@ -53,12 +61,16 @@ func _ready() -> void:
     _fog = Node3D.new()
     _fog.name = "NevoeiroDaExploracao"
     add_child(_fog)
+    _combat_visuals = Node3D.new()
+    _combat_visuals.name = "CombateVisual"
+    add_child(_combat_visuals)
     world.map_ready.connect(_new_session)
     world.hex_selected.connect(_on_hex_selected)
 
 
 func _new_session() -> void:
     units.clear()
+    _combat_marks.clear()
     cities.clear()
     districts.clear()
     explored.clear()
@@ -67,6 +79,9 @@ func _new_session() -> void:
     last_event = "Nova expedição: escolhe onde fundar a capital."
     treasury = 90
     accumulated_science = 0
+    researched.clear()
+    research_progress.clear()
+    current_technology = ""
     turns = 1
     _id_counter = 1
     selected_city_id = -1
@@ -244,7 +259,60 @@ func get_selected_city() -> Dictionary:
 
 
 func get_city_yields(city: Dictionary) -> Dictionary:
-    return CityRules.evaluate(city, world.tiles, cities, districts)
+    var yields: Dictionary = CityRules.evaluate(city, world.tiles, cities, districts)
+    if int(city["owner"]) == PLAYER:
+        if researched.has("agriculture"):
+            yields["food"] = int(yields["food"]) + 1
+            yields["food_surplus"] = int(yields["food_surplus"]) + 1
+        if researched.has("mining"):
+            yields["production"] = int(yields["production"]) + 2
+        if researched.has("writing"):
+            yields["science"] = int(yields["science"]) + 2
+        if researched.has("commerce"):
+            yields["gold"] = int(yields["gold"]) + 3
+        if researched.has("engineering"):
+            yields["production"] = int(yields["production"]) + 2
+    return yields
+
+
+func available_technologies() -> Array[String]:
+    return TechnologyRules.available(researched)
+
+
+func choose_technology(key: String) -> bool:
+    if not TechnologyRules.can_start(key, researched):
+        return false
+    current_technology = key
+    last_event = "Investigação selecionada: %s." % TechnologyRules.title(key)
+    state_changed.emit()
+    return true
+
+
+func technology_attack_bonus(owner: int) -> int:
+    if owner == PLAYER and researched.has("metallurgy"):
+        return 8
+    return 0
+
+
+func research_status() -> Dictionary:
+    return {
+        "name": TechnologyRules.title(current_technology),
+        "cost": TechnologyRules.cost(current_technology),
+        "progress": int(research_progress.get(current_technology, 0)),
+        "completed": researched.size()
+    }
+
+
+func _add_research(science_income: int) -> void:
+    if current_technology == "" or not TechnologyRules.TECHS.has(current_technology):
+        return
+    var key: String = current_technology
+    research_progress[key] = int(research_progress.get(key, 0)) + science_income
+    if int(research_progress[key]) >= TechnologyRules.cost(key):
+        researched.append(key)
+        current_technology = ""
+        last_event = "Tecnologia concluída: %s! Efeitos aplicados ao império." % TechnologyRules.title(key)
+
 
 
 func queue_warrior() -> void:
@@ -338,6 +406,7 @@ func end_turn() -> void:
         if int(city["owner"]) == PLAYER:
             treasury += int(yields["gold"])
             accumulated_science += int(yields["science"])
+            _add_research(int(yields["science"]))
         var project: String = str(city.get("project", ""))
         if DistrictRules.COSTS.has(project):
             city["progress"] = int(city["progress"]) + int(yields["production"])
@@ -438,12 +507,57 @@ func _draw_models() -> void:
         built_model.name = "Distrito_%d_%s" % [int(district["id"]), str(district["kind"])]
         built_model.position = world.tiles[district["coords"]]["position"]
         _models.add_child(built_model)
+    for city in cities:
+        var project: String = str(city.get("project", ""))
+        var site: Vector2i = city.get("site", Vector2i(-1, -1))
+        if project in ["", "warrior"] or not world.tiles.has(site):
+            continue
+        if int(city["owner"]) != PLAYER and not visible_hexes.has(site):
+            continue
+        var cost: int = int(DistrictRules.COSTS.get(project, 1))
+        var site_model: Node3D = ConstructionVisuals.make(project, int(city["progress"]), cost)
+        site_model.name = "Obra_%d" % int(city["id"])
+        site_model.position = world.tiles[site]["position"]
+        _models.add_child(site_model)
     for unit in units:
         if int(unit["owner"]) == PLAYER or visible_hexes.has(unit["coords"]):
             _make_unit_model(unit)
     _refresh_infrastructure()
     _refresh_overlays()
     _refresh_exploration()
+    _show_combat_marks()
+
+
+func record_combat(attacker_id: int, target: Vector2i, damage: int, defeated: bool) -> void:
+    _combat_marks.append({
+        "attacker": attacker_id,
+        "target": target,
+        "damage": damage,
+        "defeated": defeated
+    })
+
+
+func _show_combat_marks() -> void:
+    for mark in _combat_marks:
+        var cell: Vector2i = mark["target"]
+        if not world.tiles.has(cell) or not visible_hexes.has(cell):
+            continue
+        var effect: Node3D = CombatFX.new()
+        effect.setup(int(mark["damage"]), bool(mark["defeated"]))
+        effect.position = world.tiles[cell]["position"] + Vector3(0.0, 0.20, 0.0)
+        _combat_visuals.add_child(effect)
+        var attacker_model: Node3D = null
+        for child in _models.get_children():
+            if str(child.name).begins_with("Unidade_%d_" % int(mark["attacker"])):
+                attacker_model = child as Node3D
+                break
+        if attacker_model != null and attacker_model.has_method("begin_march"):
+            attacker_model.call("begin_march")
+            var strike: Tween = create_tween()
+            strike.tween_property(attacker_model, "rotation_degrees:z", 11.0, 0.10)
+            strike.tween_property(attacker_model, "rotation_degrees:z", 0.0, 0.15)
+            strike.tween_callback(Callable(attacker_model, "end_march"))
+    _combat_marks.clear()
 
 
 func _make_unit_model(unit: Dictionary) -> void:
@@ -538,6 +652,9 @@ func save_game() -> bool:
         "turns": turns,
         "treasury": treasury,
         "science": accumulated_science,
+        "researched": researched,
+        "research_selected": current_technology,
+        "research_progress": research_progress,
         "last_event": last_event,
         "explored": _encode_explored(),
         "next_id": _id_counter,
@@ -580,6 +697,20 @@ func load_game() -> bool:
     turns = maxi(1, int(data.get("turns", 1)))
     treasury = int(data.get("treasury", 90))
     accumulated_science = int(data.get("science", 0))
+    researched.clear()
+    for raw_key in data.get("researched", []):
+        var key: String = str(raw_key)
+        if TechnologyRules.TECHS.has(key) and not researched.has(key):
+            researched.append(key)
+    research_progress = {}
+    var loaded_progress: Variant = data.get("research_progress", {})
+    if loaded_progress is Dictionary:
+        for key in loaded_progress:
+            if TechnologyRules.TECHS.has(str(key)):
+                research_progress[str(key)] = maxi(0, int(loaded_progress[key]))
+    current_technology = str(data.get("research_selected", ""))
+    if not TechnologyRules.can_start(current_technology, researched):
+        current_technology = ""
     _id_counter = maxi(1, int(data.get("next_id", 1)))
     explored.clear()
     for coords in data.get("explored", []):

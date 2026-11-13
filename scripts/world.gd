@@ -3,6 +3,7 @@ extends Node3D
 ## Este script não contém simulação; M1 introduzirá entidades e turnos em módulos separados.
 
 const TerrainArt = preload("res://scripts/terrain_art.gd")
+const CoastArt = preload("res://scripts/coast_art.gd")
 
 signal map_ready
 signal hex_selected(cell: Vector2i)
@@ -141,6 +142,7 @@ func _build_terrain() -> void:
     terrain.add_child(art)
     TerrainArt.decorate(art, tiles, seed_value)
     _build_sea_backdrop()
+    terrain.add_child(CoastArt.make(tiles, RADIUS))
 
 
 func _corner(center: Vector3, side: int) -> Vector3:

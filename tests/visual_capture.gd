@@ -28,6 +28,9 @@ func _capture() -> void:
         _fail("VISUAL: o colono não pode fundar")
         return
     game.found_city()
+    if not game.choose_technology("agriculture"):
+        _fail("VISUAL: não foi possível iniciar Agricultura")
+        return
     var city: Dictionary = game.get_selected_city()
     var campus: Vector2i = Vector2i(-1, -1)
     for cell in world.tiles:
@@ -41,6 +44,12 @@ func _capture() -> void:
         game.end_turn()
     if game.districts.is_empty():
         _fail("VISUAL: o distrito não concluiu a construção")
+        return
+    if not game.researched.has("agriculture") or not game.choose_technology("writing"):
+        _fail("VISUAL: investigação real não avançou para Escrita")
+        return
+    if world.get_node_or_null("Terrain/Costas/LinhasDeCosta") == null:
+        _fail("VISUAL: faixas costeiras 3D ausentes")
         return
     # Preparar uma situação visual controlada de combate adjacente.
     game.next_player_unit()
@@ -109,9 +118,18 @@ func _capture() -> void:
     if frame == null or frame.get_width() < 700 or frame.get_height() < 400:
         _fail("VISUAL: não foi possível obter uma imagem do jogo")
         return
-    var output: String = "res://visual-m4.png"
+    var output: String = "res://visual-m7-mundo.png"
     if frame.save_png(output) != OK:
         _fail("VISUAL: não foi possível escrever a captura PNG")
         return
-    print("M4_VISUAL_OK: cena renderizada ", frame.get_width(), "x", frame.get_height(), "; cidade, combate, barras de vida, nevoeiro, estradas e HUD")
+    var ui: CanvasLayer = world.get_node("GameUI")
+    ui.call("_open_research")
+    await process_frame
+    RenderingServer.force_draw()
+    await process_frame
+    var technology_image: Image = root.get_texture().get_image()
+    if technology_image.save_png("res://visual-m7-tecnologias.png") != OK:
+        _fail("VISUAL: falhou captura da árvore tecnológica")
+        return
+    print("M7_VISUAL_OK: mundo e painel tecnológico renderizados ", frame.get_width(), "x", frame.get_height())
     quit(0)

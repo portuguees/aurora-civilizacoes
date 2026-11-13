@@ -1,4 +1,4 @@
-name: Godot 4.7.2 · Aurora M4 GLB Validation
+name: Godot 4.7.2 · Aurora M5-M7 Validation
 on:
   push:
     branches: [main, "feat/**"]
@@ -66,18 +66,36 @@ jobs:
           set -o pipefail
           timeout 70s godot --headless --path . --script res://tests/glb_import_smoke.gd 2>&1 | tee godot-m4-glb.log
           grep -q "M4_GLB_OK" godot-m4-glb.log
+      - name: M5 - Validar efeitos 3D de combate
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout 90s godot --headless --path . --script res://tests/combat_fx_smoke.gd 2>&1 | tee godot-m5.log
+          grep -q "M5_SMOKE_OK" godot-m5.log
+      - name: M6 - Validar costas e estaleiros por turnos
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout 90s godot --headless --path . --script res://tests/coast_construction_smoke.gd 2>&1 | tee godot-m6.log
+          grep -q "M6_SMOKE_OK" godot-m6.log
+      - name: M7 - Validar investigação, economia e persistência
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout 90s godot --headless --path . --script res://tests/technology_smoke.gd 2>&1 | tee godot-m7.log
+          grep -q "M7_SMOKE_OK" godot-m7.log
       - name: Captura real com Godot e X virtual
         shell: bash
         run: |
           set -o pipefail
           xvfb-run -a -s "-screen 0 1600x900x24" godot --path . --script res://tests/visual_capture.gd 2>&1 | tee godot-visual.log
-          grep -q "M4_VISUAL_OK" godot-visual.log
-          test -s visual-m4.png
+          grep -q "M7_VISUAL_OK" godot-visual.log
+          test -s visual-m7-mundo.png
       - name: Guardar logs para diagnóstico
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: aurora-m4-godot-validation
+          name: aurora-m5-m7-validacao
           path: |
             godot-import.log
             godot-smoke.log
@@ -86,6 +104,10 @@ jobs:
             godot-m3.log
             godot-m35.log
             godot-m4-glb.log
+            godot-m5.log
+            godot-m6.log
+            godot-m7.log
+            visual-m7-tecnologias.png
             godot-visual.log
-            visual-m4.png
+            visual-m7-mundo.png
           if-no-files-found: ignore
