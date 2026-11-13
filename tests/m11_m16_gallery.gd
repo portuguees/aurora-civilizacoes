@@ -182,6 +182,10 @@ func _run() -> void:
     game.diplomacy["peace_turns"] = 0
     enemy_city["project"] = ""
     enemy_city["site"] = Vector2i(-1, -1)
+    # Reduzir a guarnição apenas nesta cena preparada, para ilustrar a resposta.
+    for unit in game.units.duplicate():
+        if int(unit["owner"]) == game.RIVAL and str(unit["kind"]) == "archer":
+            game.units.erase(unit)
     game._rival_planning()
     if str(enemy_city["project"]) != "archer":
         _fail("IA não reagiu com um arqueiro")
