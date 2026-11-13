@@ -1,6 +1,7 @@
 extends CanvasLayer
 ## Interface de jogo M2: cidades, distritos e ações contextuais.
 const DistrictRules = preload("res://scripts/district_rules.gd")
+const TechnologyRules = preload("res://scripts/technology_rules.gd")
 
 var _game: Variant
 var _turn: Label
@@ -15,6 +16,9 @@ var _placement: Label
 var _news: Label
 var _district_buttons: Dictionary = {}
 var _focus_buttons: Array[Button] = []
+var _research_info: Label
+var _research_overlay: ColorRect
+var _research_buttons: Dictionary = {}
 
 
 func _ready() -> void:
@@ -106,6 +110,92 @@ func _create_ui() -> void:
     var controls: Label = _label("Clique esquerdo: selecionar
 Clique direito: caminho ou ataque", 11, Color("#aec7c8"))
     column.add_child(controls)
+    _build_research_ui(root)
+
+
+func _build_research_ui(root: Control) -> void:
+    var research_panel: PanelContainer = _panel()
+    research_panel.name = "PainelInvestigacao"
+    research_panel.anchor_left = 1.0
+    research_panel.anchor_right = 1.0
+    research_panel.offset_left = -415.0
+    research_panel.offset_right = -16.0
+    research_panel.offset_top = 85.0
+    research_panel.offset_bottom = 208.0
+    root.add_child(research_panel)
+    var research_column: VBoxContainer = VBoxContainer.new()
+    research_panel.add_child(research_column)
+    research_column.add_child(_label("CONHECIMENTO  ·  ÁRVORE TECNOLÓGICA", 13, Color("#f1d599")))
+    _research_info = _label("Escolhe a próxima investigação.", 12, Color("#d4e1dc"))
+    research_column.add_child(_research_info)
+    var open_button: Button = _button("ABRIR TECNOLOGIAS  [T]", _open_research)
+    open_button.name = "AbrirTecnologias"
+    research_column.add_child(open_button)
+
+    _research_overlay = ColorRect.new()
+    _research_overlay.name = "ArvoreTecnologica"
+    _research_overlay.color = Color("#081b24d6")
+    _research_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+    _research_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    root.add_child(_research_overlay)
+    var sheet: PanelContainer = _panel()
+    sheet.anchor_left = 0.5
+    sheet.anchor_right = 0.5
+    sheet.anchor_top = 0.5
+    sheet.anchor_bottom = 0.5
+    sheet.offset_left = -310.0
+    sheet.offset_right = 310.0
+    sheet.offset_top = -264.0
+    sheet.offset_bottom = 264.0
+    _research_overlay.add_child(sheet)
+    var column: VBoxContainer = VBoxContainer.new()
+    column.add_theme_constant_override("separation", 8)
+    sheet.add_child(column)
+    column.add_child(_label("INVESTIGAÇÃO DO IMPÉRIO", 21, Color("#f3d9aa")))
+    column.add_child(_label("Escolhe uma descoberta. Pré-requisitos precisam de estar concluídos.", 12, Color("#ccd8d4")))
+    for key in TechnologyRules.ORDER:
+        var info: Dictionary = TechnologyRules.TECHS[key]
+        var row: HBoxContainer = HBoxContainer.new()
+        row.add_theme_constant_override("separation", 11)
+        column.add_child(row)
+        var btn: Button = _button("%s  ·  %d ciência" % [str(info["name"]), int(info["cost"])], _select_research.bind(key))
+        btn.name = "Tech_%s" % key
+        btn.custom_minimum_size.x = 230
+        row.add_child(btn)
+        _research_buttons[key] = btn
+        var detail: Label = _label(str(info["description"]), 12, Color("#d9e6da"))
+        detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        detail.custom_minimum_size.x = 315
+        row.add_child(detail)
+    var close_button: Button = _button("FECHAR  [ESC]", _close_research)
+    column.add_child(close_button)
+    _research_overlay.visible = false
+
+
+func _open_research() -> void:
+    _research_overlay.visible = true
+    _refresh()
+
+
+func _close_research() -> void:
+    _research_overlay.visible = false
+
+
+func _select_research(key: String) -> void:
+    if _game.choose_technology(key):
+        _close_research()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+    if event is InputEventKey:
+        var pressed_key: InputEventKey = event
+        if pressed_key.pressed and not pressed_key.echo:
+            if pressed_key.keycode == KEY_T:
+                _open_research()
+                get_viewport().set_input_as_handled()
+            elif pressed_key.keycode == KEY_ESCAPE and _research_overlay.visible:
+                _close_research()
+                get_viewport().set_input_as_handled()
 
 
 func _short_district_name(kind: String) -> String:
@@ -174,6 +264,24 @@ func _refresh() -> void:
     else:
         _summary.text = "Seleciona o colono para fundar a capital."
     _news.text = str(_game.last_event)
+    var research: Dictionary = _game.research_status()
+    if str(_game.current_technology) == "":
+        _research_info.text = "%d descobertas concluídas · seleciona um projeto" % int(research["completed"])
+    else:
+        _research_info.text = "%s: %d / %d ciência  ·  %d concluídas" % [
+            str(research["name"]), int(research["progress"]),
+            int(research["cost"]), int(research["completed"])
+        ]
+    for key in _research_buttons:
+        var button: Button = _research_buttons[key]
+        button.disabled = not TechnologyRules.can_start(str(key), _game.researched)
+        var title: String = str(TechnologyRules.TECHS[key]["name"])
+        if _game.researched.has(str(key)):
+            button.text = "%s  ✓ concluída" % title
+        elif str(_game.current_technology) == str(key):
+            button.text = "%s  •  a investigar" % title
+        else:
+            button.text = "%s · %d ciência" % [title, TechnologyRules.cost(str(key))]
     _found.disabled = not _game.can_found()
     var city: Dictionary = _game.get_selected_city()
     _warrior.disabled = city.is_empty() or str(city.get("project", "")) != ""
