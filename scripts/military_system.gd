@@ -24,10 +24,10 @@ static func issue_order(game: Node, target: Vector2i) -> bool:
         if int(opponent["owner"]) == game.PLAYER:
             game.last_event = "Hexágono ocupado por outra unidade tua."
             return false
-        if str(active["kind"]) != "warrior":
+        if str(active["kind"]) not in ["warrior", "archer"]:
             game.last_event = "O colono não pode atacar; protege-o com guerreiros."
             return false
-        if Navigation.distance(active["coords"], target) == 1:
+        if Navigation.distance(active["coords"], target) <= (2 if str(active["kind"]) == "archer" else 1):
             return attack(game, active, opponent)
         var approach_path: Array[Vector2i] = Navigation.approach(
             game.world.tiles, game.units, active["coords"], target, int(active["id"])
@@ -86,28 +86,31 @@ static func advance(game: Node, unit: Dictionary) -> void:
                 rival = candidate
                 break
         unit["target_enemy"] = -1
-        if not rival.is_empty() and Navigation.distance(unit["coords"], rival["coords"]) == 1:
+        if not rival.is_empty() and Navigation.distance(unit["coords"], rival["coords"]) <= (2 if str(unit["kind"]) == "archer" else 1):
             attack(game, unit, rival)
 
 
 static func attack(game: Node, attacker: Dictionary, defender: Dictionary) -> bool:
-    if str(attacker.get("kind", "")) != "warrior":
+    if str(attacker.get("kind", "")) not in ["warrior", "archer"]:
         return false
     if int(attacker["owner"]) == int(defender["owner"]) or int(attacker.get("move_points", 0)) < 1:
         return false
     if game.is_at_peace():
         return false
-    if Navigation.distance(attacker["coords"], defender["coords"]) != 1:
+    var attack_range: int = 2 if str(attacker["kind"]) == "archer" else 1
+    var separation: int = Navigation.distance(attacker["coords"], defender["coords"])
+    if separation < 1 or separation > attack_range:
         return false
     var terrain: String = str(game.world.tiles[defender["coords"]]["biome"])
     var defensive_bonus: int = 7 if terrain in ["hills", "forest"] else 0
-    var strength: int = 38 if str(defender["kind"]) == "settler" else 32
+    var strength: int = 25 if str(attacker["kind"]) == "archer" else (38 if str(defender["kind"]) == "settler" else 32)
     strength += int(game.call("technology_attack_bonus", int(attacker["owner"])))
     var damage: int = maxi(12, strength - defensive_bonus)
     defender["health"] = int(defender["health"]) - damage
     game.note_hostility(int(attacker["owner"]), int(defender["owner"]))
     game.call("record_combat", int(attacker["id"]), defender["coords"], damage, int(defender["health"]) <= 0)
     attacker["move_points"] = 0
+    attacker["experience"] = int(attacker.get("experience", 0)) + 1
     attacker["moved"] = true
     attacker["route"] = []
     attacker["target_enemy"] = -1
@@ -123,7 +126,7 @@ static func attack(game: Node, attacker: Dictionary, defender: Dictionary) -> bo
             attacker["coords"] = enemy_position
         game.last_event = "Vitória no combate! O adversário foi derrotado."
         return true
-    var counterdamage: int = 14 if str(defender["kind"]) == "warrior" else 0
+    var counterdamage: int = 14 if str(defender["kind"]) == "warrior" and str(attacker["kind"]) != "archer" else 0
     if counterdamage > 0:
         attacker["health"] = int(attacker["health"]) - counterdamage
     if int(attacker["health"]) <= 0:
@@ -163,11 +166,11 @@ static func rival_turn(game: Node) -> void:
                     break
 
     for unit in game.units.duplicate():
-        if not game.units.has(unit) or int(unit["owner"]) != game.RIVAL or str(unit["kind"]) != "warrior":
+        if not game.units.has(unit) or int(unit["owner"]) != game.RIVAL or str(unit["kind"]) not in ["warrior", "archer"]:
             continue
         var fought: bool = false
         for player in game.units.duplicate():
-            if not game.is_at_peace() and int(player["owner"]) == game.PLAYER and Navigation.distance(unit["coords"], player["coords"]) == 1:
+            if not game.is_at_peace() and int(player["owner"]) == game.PLAYER and Navigation.distance(unit["coords"], player["coords"]) <= (2 if str(unit["kind"]) == "archer" else 1):
                 fought = attack(game, unit, player)
                 break
         if fought or not game.units.has(unit):
