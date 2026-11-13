@@ -14,6 +14,7 @@ const HexNavigation = preload("res://scripts/hex_navigation.gd")
 const MilitarySystem = preload("res://scripts/military_system.gd")
 const ExplorationVisuals = preload("res://scripts/exploration_visuals.gd")
 const CombatFX = preload("res://scripts/combat_fx.gd")
+const ConstructionVisuals = preload("res://scripts/construction_visuals.gd")
 
 const PLAYER: int = 0
 const RIVAL: int = 1
@@ -445,6 +446,18 @@ func _draw_models() -> void:
         built_model.name = "Distrito_%d_%s" % [int(district["id"]), str(district["kind"])]
         built_model.position = world.tiles[district["coords"]]["position"]
         _models.add_child(built_model)
+    for city in cities:
+        var project: String = str(city.get("project", ""))
+        var site: Vector2i = city.get("site", Vector2i(-1, -1))
+        if project in ["", "warrior"] or not world.tiles.has(site):
+            continue
+        if int(city["owner"]) != PLAYER and not visible_hexes.has(site):
+            continue
+        var cost: int = int(DistrictRules.COSTS.get(project, 1))
+        var site_model: Node3D = ConstructionVisuals.make(project, int(city["progress"]), cost)
+        site_model.name = "Obra_%d" % int(city["id"])
+        site_model.position = world.tiles[site]["position"]
+        _models.add_child(site_model)
     for unit in units:
         if int(unit["owner"]) == PLAYER or visible_hexes.has(unit["coords"]):
             _make_unit_model(unit)
