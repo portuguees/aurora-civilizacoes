@@ -456,8 +456,12 @@ func _make_unit_model(unit: Dictionary) -> void:
         var old_position: Vector3 = _old_unit_positions[int(unit["id"])]
         if old_position.distance_to(destination) > 0.05 and old_position.distance_to(destination) < 14.0:
             model.position = old_position
+            if model.has_method("begin_march"):
+                model.call("begin_march")
             var tween: Tween = create_tween()
-            tween.tween_property(model, "position", destination, 0.27).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+            tween.tween_property(model, "position", destination, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+            if model.has_method("end_march"):
+                tween.tween_callback(Callable(model, "end_march"))
 
 
 func _make_city_model(city: Dictionary) -> void:
