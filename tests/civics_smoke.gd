@@ -71,7 +71,7 @@ func _run() -> void:
     city = game.get_selected_city()
     var neutral: Dictionary = CityRules.evaluate(city, world.tiles, game.cities, game.districts)
     var council: Dictionary = game.get_city_yields(city)
-    if int(council["gold"]) < int(neutral["gold"]) + 1 or int(council["culture"]) < int(neutral["food"]) - 10:
+    if int(council["gold"]) < int(neutral["gold"]) + 1 or int(council["culture"]) != 1 + int(city["population"]) + 1 + 1:
         _fail("Governo Conselho não aplicou bónus económico")
         return
     if not game.choose_civic("artisan_guilds"):
