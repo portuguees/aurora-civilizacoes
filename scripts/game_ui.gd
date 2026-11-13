@@ -2,6 +2,7 @@ extends CanvasLayer
 ## Interface de jogo M2: cidades, distritos e ações contextuais.
 const DistrictRules = preload("res://scripts/district_rules.gd")
 const TechnologyRules = preload("res://scripts/technology_rules.gd")
+const StrategicUI = preload("res://scripts/strategic_ui.gd")
 
 var _game: Variant
 var _turn: Label
@@ -111,6 +112,10 @@ func _create_ui() -> void:
 Clique direito: caminho ou ataque", 11, Color("#aec7c8"))
     column.add_child(controls)
     _build_research_ui(root)
+    var strategy: Control = StrategicUI.new()
+    strategy.name = "PaineisEstrategia"
+    strategy.call("setup", _game)
+    root.add_child(strategy)
 
 
 func _build_research_ui(root: Control) -> void:
