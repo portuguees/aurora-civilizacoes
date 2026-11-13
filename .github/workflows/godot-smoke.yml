@@ -116,6 +116,13 @@ jobs:
           timeout 120s xvfb-run -a -s "-screen 0 1600x900x24" godot --path . --script res://tests/gallery_capture.gd 2>&1 | tee godot-galeria.log
           grep -q "GALERIA_COMPLETA_OK" godot-galeria.log
           test "$(find . -maxdepth 1 -name 'galeria_*.png' | wc -l)" -eq 8
+      - name: Fotografar cultura, diplomacia e condições de vitória
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout 120s xvfb-run -a -s "-screen 0 1600x900x24" godot --path . --script res://tests/strategic_capture.gd 2>&1 | tee godot-m8-m10-visual.log
+          grep -q "M8_M10_VISUAL_OK" godot-m8-m10-visual.log
+          test "$(find . -maxdepth 1 -name 'aurora_m*.png' | wc -l)" -eq 5
       - name: Guardar logs para diagnóstico
         if: always()
         uses: actions/upload-artifact@v4
@@ -135,6 +142,8 @@ jobs:
             godot-m8.log
             godot-m9.log
             godot-m10.log
+            godot-m8-m10-visual.log
+            aurora_m*.png
             godot-galeria.log
             galeria_*.png
             visual-m7-tecnologias.png
