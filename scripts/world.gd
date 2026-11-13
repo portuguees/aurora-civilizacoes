@@ -99,16 +99,16 @@ func _build_terrain() -> void:
                     tile_color = Color("#8f9587")
                 elif elevation > 0.33:
                     biome = "hills"
-                    tile_color = Color("#888d73")
+                    tile_color = Color("#818b78")
                 elif climate_value < -0.23:
                     biome = "plains"
-                    tile_color = Color("#b7ad78")
+                    tile_color = Color("#aaa176")
                 elif climate_value > 0.12:
                     biome = "forest"
-                    tile_color = Color("#537a58")
+                    tile_color = Color("#49734f")
                 else:
                     biome = "grassland"
-                    tile_color = Color("#82a66e")
+                    tile_color = Color("#729a70")
 
             var center: Vector3 = _hex_center(cell)
             center.y = height
