@@ -79,6 +79,13 @@ func _capture() -> void:
     if city_model.get_node_or_null("FaixaCidade") == null:
         _fail("VISUAL: a cidade está sem faixa de identificação")
         return
+    if city_model.get_node_or_null("Arquitetura") == null:
+        _fail("VISUAL: os detalhes arquitetónicos M3.5 não foram carregados")
+        return
+    var forest: Node = world.get_node_or_null("Terrain/Florestas/PinheirosBase")
+    if forest == null:
+        _fail("VISUAL: floresta detalhada M3.5 ausente")
+        return
     if unit_model.get_node_or_null("NomeUnidade") == null:
         _fail("VISUAL: os guerreiros estão sem faixa de identificação")
         return
@@ -91,9 +98,9 @@ func _capture() -> void:
     if frame == null or frame.get_width() < 700 or frame.get_height() < 400:
         _fail("VISUAL: não foi possível obter uma imagem do jogo")
         return
-    var output: String = "res://visual-m3.png"
+    var output: String = "res://visual-m35.png"
     if frame.save_png(output) != OK:
         _fail("VISUAL: não foi possível escrever a captura PNG")
         return
-    print("M3_VISUAL_OK: cena renderizada ", frame.get_width(), "x", frame.get_height(), "; cidade, combate, barras de vida, nevoeiro, estradas e HUD")
+    print("M35_VISUAL_OK: cena renderizada ", frame.get_width(), "x", frame.get_height(), "; cidade, combate, barras de vida, nevoeiro, estradas e HUD")
     quit(0)

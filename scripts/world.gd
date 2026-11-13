@@ -2,6 +2,8 @@ extends Node3D
 ## M0: terreno 3D original de hexágonos. Nenhuma dependência de assets binários.
 ## Este script não contém simulação; M1 introduzirá entidades e turnos em módulos separados.
 
+const TerrainArt = preload("res://scripts/terrain_art.gd")
+
 signal map_ready
 signal hex_selected(cell: Vector2i)
 
@@ -71,16 +73,12 @@ func _build_terrain() -> void:
     var climate: FastNoiseLite = FastNoiseLite.new()
     climate.seed = seed_value + 203
     climate.frequency = 0.16
-    var rng: RandomNumberGenerator = RandomNumberGenerator.new()
-    rng.seed = seed_value
 
     var land_tool: SurfaceTool = SurfaceTool.new()
     var water_tool: SurfaceTool = SurfaceTool.new()
     land_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
     water_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
 
-    var trees: Array[Transform3D] = []
-    var rocks: Array[Transform3D] = []
 
     for y in range(HEIGHT):
         for x in range(WIDTH):
@@ -101,16 +99,16 @@ func _build_terrain() -> void:
                     tile_color = Color("#8f9587")
                 elif elevation > 0.33:
                     biome = "hills"
-                    tile_color = Color("#888d73")
+                    tile_color = Color("#818b78")
                 elif climate_value < -0.23:
                     biome = "plains"
-                    tile_color = Color("#b7ad78")
+                    tile_color = Color("#aaa176")
                 elif climate_value > 0.12:
                     biome = "forest"
-                    tile_color = Color("#537a58")
+                    tile_color = Color("#49734f")
                 else:
                     biome = "grassland"
-                    tile_color = Color("#82a66e")
+                    tile_color = Color("#729a70")
 
             var center: Vector3 = _hex_center(cell)
             center.y = height
@@ -133,25 +131,15 @@ func _build_terrain() -> void:
                     _triangle(tool, a, down_a, b, edge_color)
                     _triangle(tool, b, down_a, down_b, edge_color)
 
-            if water:
-                continue
-            if biome == "forest" or biome == "grassland" or biome == "plains":
-                var amount: int = 4 if biome == "forest" else (2 if biome == "grassland" else 1)
-                for k in range(amount):
-                    var scatter: Vector2 = Vector2(rng.randf_range(-0.69, 0.69), rng.randf_range(-0.69, 0.69))
-                    var place: Vector3 = center + Vector3(scatter.x, 0.38, scatter.y)
-                    var scale_value: float = rng.randf_range(0.68, 1.45)
-                    trees.append(Transform3D(Basis().scaled(Vector3(scale_value, scale_value, scale_value)), place))
-            elif biome == "hills" or biome == "mountain":
-                for k in range(2):
-                    var place: Vector3 = center + Vector3(rng.randf_range(-0.44, 0.44), 0.20, rng.randf_range(-0.44, 0.44))
-                    var scale_value: float = rng.randf_range(0.48, 1.22)
-                    rocks.append(Transform3D(Basis().scaled(Vector3(scale_value, scale_value, scale_value)), place))
 
     _add_surface("Terras", land_tool, _material(Color.WHITE, true))
     _add_surface("Agua", water_tool, _material(Color("#3e91a1"), true))
-    _build_instances("Florestas", _tree_mesh(), trees, Color("#355f48"))
-    _build_instances("Rochas", _rock_mesh(), rocks, Color("#666e6a"))
+    # M3.5: grupos MultiMesh de árvores/rochas/plantas com uma paleta própria.
+    # O grupo mantém o nome do contrato M0 para os smoke tests.
+    var art: Node3D = Node3D.new()
+    art.name = "Florestas"
+    terrain.add_child(art)
+    TerrainArt.decorate(art, tiles, seed_value)
     _build_sea_backdrop()
 
 

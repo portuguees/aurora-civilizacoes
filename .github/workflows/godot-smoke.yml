@@ -1,4 +1,4 @@
-name: Godot 4.7.2 · M0 Smoke Test
+name: Godot 4.7.2 · Aurora M3.5 Validation
 on:
   push:
     branches: [main, "feat/**"]
@@ -50,24 +50,31 @@ jobs:
           set -o pipefail
           godot --headless --path . --script res://tests/military_smoke.gd 2>&1 | tee godot-m3.log
           grep -q "M3_SMOKE_OK" godot-m3.log
+      - name: Validar a nova arte 3D e as animações M3.5
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . --script res://tests/art_smoke.gd 2>&1 | tee godot-m35.log
+          grep -q "M35_SMOKE_OK" godot-m35.log
       - name: Captura real com Godot e X virtual
         shell: bash
         run: |
           set -o pipefail
           xvfb-run -a -s "-screen 0 1600x900x24" godot --path . --script res://tests/visual_capture.gd 2>&1 | tee godot-visual.log
-          grep -q "M3_VISUAL_OK" godot-visual.log
-          test -s visual-m3.png
+          grep -q "M35_VISUAL_OK" godot-visual.log
+          test -s visual-m35.png
       - name: Guardar logs para diagnóstico
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: godot-m0-logs
+          name: aurora-m35-godot-validation
           path: |
             godot-import.log
             godot-smoke.log
             godot-m1.log
             godot-m2.log
             godot-m3.log
+            godot-m35.log
             godot-visual.log
-            visual-m3.png
+            visual-m35.png
           if-no-files-found: ignore

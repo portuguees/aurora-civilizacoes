@@ -1,4 +1,5 @@
 extends RefCounted
+const CityDetails = preload("res://scripts/city_details.gd")
 ## Pequena cidade estilizada em 3D. Arte geométrica original, sem texturas externas.
 ## A população aumenta o número de casas e as muralhas surgem a partir de pop. 3.
 
@@ -53,6 +54,8 @@ static func make(city: Dictionary) -> Node3D:
     _cylinder(root, Vector3(0.64, 1.24, -0.16), 0.037, 1.65, Color("#65503f"), 6)
     _box(root, Vector3(0.94, 1.82, -0.16), Vector3(0.62, 0.32, 0.05), faction)
 
+    CityDetails.decorate(root, city)
+
     var banner: Label3D = Label3D.new()
     banner.name = "FaixaCidade"
     banner.text = "%s  •  %d" % [str(city.get("name", "Cidade")), population]
@@ -60,7 +63,7 @@ static func make(city: Dictionary) -> Node3D:
     banner.pixel_size = 0.005
     banner.outline_size = 10
     banner.modulate = faction
-    banner.position.y = 2.4
+    banner.position.y = 3.05
     banner.billboard = BaseMaterial3D.BILLBOARD_ENABLED
     root.add_child(banner)
     return root

@@ -47,6 +47,22 @@ static func make(kind: String) -> Node3D:
                 _cylinder(root, Vector3(x, 0.41, 0.0), 0.29, 0.55, Color("#7c8584"))
             _box(root, Vector3(0.0, 0.72, 0.42), Vector3(0.98, 0.15, 0.16), Color("#9c7955"))
 
+    # Nome legível no mapa ao ampliar a câmara.
+    var names: Dictionary = {
+        "campus": "ACADEMIA", "market": "MERCADO",
+        "industrial": "OFICINAS", "barracks": "QUARTEL",
+        "harbor": "PORTO", "farm": "QUINTA", "mine": "MINA"
+    }
+    var caption: Label3D = Label3D.new()
+    caption.name = "NomeDistrito"
+    caption.text = str(names.get(kind, kind.to_upper()))
+    caption.font_size = 31
+    caption.pixel_size = 0.0038
+    caption.outline_size = 9
+    caption.modulate = Color("#f9e6c2")
+    caption.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+    caption.position.y = 1.64
+    root.add_child(caption)
     return root
 
 
