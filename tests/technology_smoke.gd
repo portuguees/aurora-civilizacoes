@@ -26,7 +26,7 @@ func _run() -> void:
     if ui == null or ui.get_node_or_null("PainelInvestigacao") == null:
         _fail("Não existe painel de investigação na interface")
         return
-    if ui.get_node_or_null("ArvoreTecnologica/") == null:
+    if ui.get_node_or_null("ArvoreTecnologica") == null:
         _fail("Não existe janela de árvore tecnológica")
         return
     if game.choose_technology("writing") or game.choose_technology("commerce"):
